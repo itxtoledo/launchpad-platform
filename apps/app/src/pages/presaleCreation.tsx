@@ -22,6 +22,7 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // importing necessary wagmi for contracts integrations
 import { useWaitForTransactionReceipt, type BaseError } from "wagmi";
@@ -38,23 +39,25 @@ import {
 import { FaucetButton } from "@/components/FaucetButton";
 
 // Component to handle supply field with formatting
-function SupplyField({ field }: { field: { value: string; onChange: (val: string) => void } }) {
+function SupplyField({
+  field,
+}: {
+  field: { value: string; onChange: (val: string) => void };
+}) {
   const [displayValue, setDisplayValue] = useState(
     formatNumberWithThousands(field.value)
   );
 
   return (
     <FormItem>
-      <FormLabel>Total Supply</FormLabel>
+      <FormLabel>Initial Supply</FormLabel>
       <FormControl>
         <Input
           type="text"
           placeholder="Enter the initial supply"
           value={displayValue}
           onChange={(e) => {
-            const rawValue = removeThousandSeparators(
-              e.target.value
-            );
+            const rawValue = removeThousandSeparators(e.target.value);
             // Only update if the raw value is a valid number
             if (
               rawValue === "" ||
@@ -66,17 +69,15 @@ function SupplyField({ field }: { field: { value: string; onChange: (val: string
           }}
           onBlur={(e) => {
             // Format the value on blur
-            const rawValue = removeThousandSeparators(
-              e.target.value
-            );
+            const rawValue = removeThousandSeparators(e.target.value);
             setDisplayValue(formatNumberWithThousands(rawValue));
           }}
         />
       </FormControl>
       <FormDescription>
-        The total number of tokens that will be minted and sent to
-        your wallet. This is not the maximum supply, the maximum
-        supply is defined by the hard cap and token price.
+        The total number of tokens that will be minted and sent to your wallet.
+        This is not the maximum supply, the maximum supply is defined by the
+        hard cap and token price.
       </FormDescription>
       <FormMessage />
     </FormItem>
@@ -104,13 +105,14 @@ export default function PresaleCreation() {
       price: "",
       hardCap: "",
       startTime: "",
-      endTime: "",
+      endTime: undefined,
+      noTimeLimit: false,
     },
   });
 
   // Calculate maximum supply based on hardcap and token price
-  const hardCap = form.watch('hardCap');
-  const price = form.watch('price');
+  const hardCap = form.watch("hardCap");
+  const price = form.watch("price");
   let maxSupply = 0;
   if (hardCap && price && parseFloat(price) > 0) {
     maxSupply = parseFloat(hardCap) / parseFloat(price);
@@ -126,7 +128,36 @@ export default function PresaleCreation() {
     const startTimeUnix = Math.floor(
       new Date(values.startTime).getTime() / 1000
     );
-    const endTimeUnix = Math.floor(new Date(values.endTime).getTime() / 1000);
+    
+    let endTimeUnix: number;
+    if (values.noTimeLimit) {
+      endTimeUnix = 0; // Send 0 to indicate no time limit
+    } else if (values.endTime) {
+      endTimeUnix = Math.floor(new Date(values.endTime).getTime() / 1000);
+    } else {
+      // This shouldn't happen due to form validation, but added for safety
+      throw new Error("End time is required unless 'No time limit' is selected");
+    }
+
+    // Log the parameters being sent to the blockchain
+    console.log("Creating Presale with parameters:");
+    console.log("- Name:", values.name);
+    console.log("- Symbol:", values.symbol);
+    console.log("- Supply:", cleanSupply);
+    console.log("- Price (ETH):", values.price, "->", priceinETH);
+    console.log("- Hard Cap (ETH):", values.hardCap, "->", hardCapInETH);
+    console.log("- Start Time:", values.startTime, "-> Unix:", startTimeUnix);
+    console.log("- End Time:", values.noTimeLimit ? "No time limit (0)" : values.endTime, "-> Unix:", endTimeUnix);
+    console.log("- No Time Limit:", values.noTimeLimit);
+    console.log("- Full args array:", [
+      values.name,
+      values.symbol,
+      BigInt(cleanSupply),
+      priceinETH,
+      hardCapInETH,
+      BigInt(startTimeUnix),
+      BigInt(endTimeUnix),
+    ]);
 
     if (contractAddress) {
       createPresale({
@@ -274,7 +305,7 @@ export default function PresaleCreation() {
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="startTime"
@@ -298,7 +329,11 @@ export default function PresaleCreation() {
                 <FormItem>
                   <FormLabel>End Time</FormLabel>
                   <FormControl>
-                    <Input type="datetime-local" {...field} />
+                    <Input 
+                      type="datetime-local" 
+                      {...field} 
+                      disabled={form.watch("noTimeLimit")}
+                    />
                   </FormControl>
                   <FormDescription>
                     The end date and time of the presale.
@@ -307,14 +342,36 @@ export default function PresaleCreation() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="noTimeLimit"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>No time limit</FormLabel>
+                    <FormDescription>
+                      Check this to set no end time for the presale
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
             {maxSupply > 0 && (
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 className="font-semibold text-blue-800">Presale Details</h3>
                 <p className="text-sm text-blue-700">
-                  Maximum Supply: {formatNumberWithThousands(maxSupply.toFixed(0))} tokens
+                  Maximum Supply:{" "}
+                  {formatNumberWithThousands(maxSupply.toFixed(0))} tokens
                 </p>
                 <p className="text-sm text-blue-700">
-                  Based on Hard Cap of {hardCap} {nativeCurrencySymbol} and Token Price of {price} {nativeCurrencySymbol} per token
+                  Based on Hard Cap of {hardCap} {nativeCurrencySymbol} and
+                  Token Price of {price} {nativeCurrencySymbol} per token
                 </p>
               </div>
             )}
