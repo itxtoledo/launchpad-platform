@@ -5,8 +5,8 @@ import PresaleDetails from "./pages/presaleDetails";
 import Home from "./pages/home";
 import { MyTokens } from "./pages/myTokens";
 import { TokenDetails } from "./pages/tokenDetails";
-import PresaleList from "./pages/presaleList";
 import BlankPage from "./pages/BlankPage";
+import { FactoryOwnerPage } from "./pages/FactoryOwnerPage";
 
 import Layout from "./components/Layout";
 
@@ -16,12 +16,36 @@ const rootRoute = new RootRoute({
 
 export const routeTree = rootRoute.addChildren([
   new Route({ path: "/", component: Home, getParentRoute: () => rootRoute }),
-  new Route({ path: "/presale-creation", component: PresaleCreation, getParentRoute: () => rootRoute }),
-  new Route({ path: "/presale-details/$address", component: PresaleDetails, getParentRoute: () => rootRoute }),
-  new Route({ path: "/my-tokens", component: MyTokens, getParentRoute: () => rootRoute }),
-  new Route({ path: "/token/$address", component: TokenDetails, getParentRoute: () => rootRoute }),
-  new Route({ path: "/presales", component: PresaleList, getParentRoute: () => rootRoute }),
-  new Route({ path: "/blank", component: BlankPage, getParentRoute: () => rootRoute }),
+  new Route({
+    path: "/presale-creation",
+    component: PresaleCreation,
+    getParentRoute: () => rootRoute,
+  }),
+  new Route({
+    path: "/presale-details/$address",
+    component: PresaleDetails,
+    getParentRoute: () => rootRoute,
+  }),
+  new Route({
+    path: "/my-tokens",
+    component: MyTokens,
+    getParentRoute: () => rootRoute,
+  }),
+  new Route({
+    path: "/token/$address",
+    component: TokenDetails,
+    getParentRoute: () => rootRoute,
+  }),
+  new Route({
+    path: "/blank",
+    component: BlankPage,
+    getParentRoute: () => rootRoute,
+  }),
+  new Route({
+    path: "/factory-owner",
+    component: FactoryOwnerPage,
+    getParentRoute: () => rootRoute,
+  }),
 ]);
 
 export default function Routes() {

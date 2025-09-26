@@ -104,9 +104,12 @@ export default function PresaleCreation() {
       supply: "",
       price: "",
       hardCap: "",
+      softCap: "",
+      softCapPrice: "", // Added softCapPrice
       startTime: "",
       endTime: undefined,
       noTimeLimit: false,
+      hasSoftCap: false, // Added hasSoftCap
     },
   });
 
@@ -123,6 +126,8 @@ export default function PresaleCreation() {
     const cleanSupply = values.supply.toString().replace(/\s/g, "");
     const priceinETH = parseEther(values.price);
     const hardCapInETH = parseEther(values.hardCap);
+    const softCapInETH = values.hasSoftCap ? parseEther(values.softCap) : parseEther("0"); // Conditionally set softCapInETH
+    const softCapPriceInETH = values.hasSoftCap ? parseEther(values.softCapPrice) : parseEther("0"); // Conditionally set softCapPriceInETH
 
     // Convert date strings to Unix timestamps
     const startTimeUnix = Math.floor(
@@ -146,6 +151,8 @@ export default function PresaleCreation() {
     console.log("- Supply:", cleanSupply);
     console.log("- Price (ETH):", values.price, "->", priceinETH);
     console.log("- Hard Cap (ETH):", values.hardCap, "->", hardCapInETH);
+    console.log("- Soft Cap (ETH):", values.hasSoftCap ? values.softCap : "0", "->", softCapInETH); // Updated softCap log
+    console.log("- Soft Cap Price (ETH):", values.hasSoftCap ? values.softCapPrice : "0", "->", softCapPriceInETH); // Updated softCapPrice log
     console.log("- Start Time:", values.startTime, "-> Unix:", startTimeUnix);
     console.log("- End Time:", values.noTimeLimit ? "No time limit (0)" : values.endTime, "-> Unix:", endTimeUnix);
     console.log("- No Time Limit:", values.noTimeLimit);
@@ -155,8 +162,10 @@ export default function PresaleCreation() {
       BigInt(cleanSupply),
       priceinETH,
       hardCapInETH,
+      softCapInETH,
       BigInt(startTimeUnix),
       BigInt(endTimeUnix),
+      softCapPriceInETH,
     ]);
 
     if (contractAddress) {
@@ -170,8 +179,10 @@ export default function PresaleCreation() {
           BigInt(cleanSupply),
           priceinETH,
           hardCapInETH,
+          softCapInETH,
           BigInt(startTimeUnix),
           BigInt(endTimeUnix),
+          softCapPriceInETH,
         ],
       });
     }
@@ -308,6 +319,83 @@ export default function PresaleCreation() {
 
             <FormField
               control={form.control}
+              name="hasSoftCap"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Enable Soft Cap</FormLabel>
+                    <FormDescription>
+                      Check this to enable a soft cap for the presale.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {form.watch("hasSoftCap") && ( // Conditional rendering
+              <>
+                <FormField
+                  control={form.control}
+                  name="softCap"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Soft Cap ({nativeCurrencySymbol})</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder={`Enter the soft cap in ${nativeCurrencySymbol}`}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The minimum amount of {nativeCurrencySymbol} to be raised in
+                        the presale for it to be considered successful.
+                      </FormDescription>
+                      <FormDescription>
+                        The presale owner will only be able to withdraw the raised amount if the soft cap is defined and reached.
+                      </FormDescription>
+                      {form.watch("hasSoftCap") && !form.watch("noTimeLimit") && (
+                        <FormDescription>
+                          If a soft cap is defined and not reached by the end of the presale, contributors will be able to withdraw their contributed funds.
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="softCapPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Soft Cap Price ({nativeCurrencySymbol})</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder={`Enter the soft cap price in ${nativeCurrencySymbol}`}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The price of a single token in {nativeCurrencySymbol} if the soft cap is reached.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+
+            <FormField
+              control={form.control}
               name="startTime"
               render={({ field }) => (
                 <FormItem>
@@ -362,6 +450,8 @@ export default function PresaleCreation() {
                 </FormItem>
               )}
             />
+
+
             {maxSupply > 0 && (
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 className="font-semibold text-blue-800">Presale Details</h3>

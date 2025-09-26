@@ -45,6 +45,9 @@ The project is built using the following technologies:
 - **Compile Contracts**: `npx hardhat compile`
 - **Run Tests**: `npx hardhat test`
 - **Export ABI**: `npx hardhat export-abi`
+- **Get Paginated Presales (Decreasing by Creation)**: `getPaginatedPresalesDecreasingByCreation(uint256 page, uint256 pageSize)`
+- **Set Presale Creation Fee**: `setPresaleCreationFee(uint256 _newFee)`
+- **Withdraw Fees**: `withdrawFees()`
 
 ## Directory Structure
 

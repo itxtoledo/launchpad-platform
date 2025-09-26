@@ -2,6 +2,7 @@ import { Outlet } from '@tanstack/react-router'
 import Header from './Header'
 import Footer from './Footer'
 import BottomNav from './BottomNav'
+import { Toaster } from "@/components/ui/sonner";
 
 export default function Layout() {
   return (
@@ -12,6 +13,7 @@ export default function Layout() {
       </div>
       <Footer />
       <BottomNav />
+      <Toaster />
     </>
   )
 }

@@ -6,18 +6,27 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./Presale.sol";
 import "./MintableERC20.sol";
 
-contract PresaleFactory {
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+error IncorrectPresaleCreationFee(uint256 sent, uint256 required);
+
+contract PresaleFactory is Ownable {
     Presale public immutable presale;
     MintableERC20 public immutable token;
 
+    uint256 public presaleCreationFee;
+
     address[] public allPresales;
-    mapping(address => address[]) private userCreatedTokens;
+    mapping(address => address[]) private presaleToUsers;
 
     event PresaleCreated(address indexed presale);
 
-    constructor(address presale_, address token_) {
+    constructor(address presale_, address token_, uint256 initialFee)
+        Ownable(msg.sender)
+    {
         presale = Presale(presale_);
         token = MintableERC20(token_);
+        presaleCreationFee = initialFee;
     }
 
     function createPresale(
@@ -26,26 +35,44 @@ contract PresaleFactory {
         uint256 supply,
         uint256 price,
         uint256 hardCap,
+        uint256 softCap,
         uint256 startTime,
-        uint256 endTime
-    ) external {
+        uint256 endTime,
+        uint256 softCapPrice
+    ) external payable {
+        if (msg.value != presaleCreationFee) revert IncorrectPresaleCreationFee(msg.value, presaleCreationFee);
+        payable(address(this)).transfer(msg.value);
         address newToken = Clones.clone(address(token));
         address newPresale = Clones.clone(address(presale));
 
-        MintableERC20(newToken).initialize(msg.sender, newPresale, name, symbol, supply);
-        Presale(newPresale).initialize(msg.sender, newToken, price, hardCap, startTime, endTime);
+        MintableERC20(newToken).initialize({ 
+            defaultAdmin_: msg.sender,
+            minter_: newPresale,
+            name_: name,
+            symbol_: symbol,
+            initialSupply_: supply
+        });
+        Presale(newPresale).initialize({ 
+            owner_: msg.sender,
+            token_: newToken,
+            price_: price,
+            hardCap_: hardCap,
+            softCap_: softCap,
+            startTime_: startTime,
+            endTime_: endTime,
+            softCapPrice_: softCapPrice,
+            factoryAddress_: address(this)
+        });
 
         allPresales.push(newPresale);
 
         emit PresaleCreated(newPresale);
-        userCreatedTokens[msg.sender].push(newToken);
+        presaleToUsers[msg.sender].push(newToken);
     }
 
-    function getPaginatedPresales(uint256 page)
-        external
-        view
-        returns (address[] memory)
-    {
+    function getPaginatedPresales(
+        uint256 page
+    ) external view returns (address[] memory) {
         uint256 totalPresales = allPresales.length;
         uint256 pageSize = 10; // Fixed page size
         if (page == 0) {
@@ -67,7 +94,50 @@ contract PresaleFactory {
         return result;
     }
 
-    function getUserCreatedTokens(address user) external view returns (address[] memory) {
-        return userCreatedTokens[user];
+    function getUserCreatedTokens(
+        address user
+    ) external view returns (address[] memory) {
+        return presaleToUsers[user];
+    }
+
+    function getPaginatedPresalesDecreasingByCreation(
+        uint256 page,
+        uint256 pageSize
+    ) external view returns (address[] memory) {
+        uint256 totalPresales = allPresales.length;
+        if (totalPresales == 0 || page == 0) {
+            return new address[](0);
+        }
+
+        uint256 skip = (page - 1) * pageSize;
+        if (skip >= totalPresales) {
+            return new address[](0);
+        }
+
+        uint256 countToReturn = pageSize;
+        if (skip + countToReturn > totalPresales) {
+            countToReturn = totalPresales - skip;
+        }
+
+        address[] memory result = new address[](countToReturn);
+        for (uint256 i = 0; i < countToReturn; i++) {
+            result[i] = allPresales[totalPresales - 1 - skip - i];
+        }
+        return result;
+    }
+
+    receive() external payable {}
+
+    function setPresaleCreationFee(uint256 _newFee) external onlyOwner {
+        presaleCreationFee = _newFee;
+    }
+
+    function getFactoryBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+
+    function withdrawFees() external onlyOwner {
+        uint256 balance = address(this).balance;
+        payable(owner()).transfer(balance);
     }
 }

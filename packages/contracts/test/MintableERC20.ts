@@ -3,240 +3,101 @@ import { expect } from "chai";
 import hre from "hardhat";
 import { parseEther } from "viem";
 
-describe("PresaleFactory", function () {
-  async function deployMintableERC20() {
-    const presale = await hre.viem.deployContract("Presale");
-    const token = await hre.viem.deployContract("MintableERC20");
-
+describe("MintableERC20", function () {
+  async function deployToken() {
     const [owner, otherAccount] = await hre.viem.getWalletClients();
+
+    const presale = await hre.viem.deployContract("Presale");
+    const tokenImplementation = await hre.viem.deployContract("MintableERC20");
+
+    const initialFee = parseEther("0.01");
 
     const presaleFactory = await hre.viem.deployContract("PresaleFactory", [
       presale.address,
-      token.address,
+      tokenImplementation.address,
+      initialFee,
     ]);
 
     const publicClient = await hre.viem.getPublicClient();
 
+    const currentTime = BigInt(Math.floor(Date.now() / 1000));
+    const futureTime = currentTime + 3600n;
+
+    const hash = await presaleFactory.write.createPresale(
+      [
+        "Test Token",
+        "TST",
+        parseEther("1000"),
+        parseEther("0.01"),
+        parseEther("10"), // hardCap
+        parseEther("5"), // softCap
+        currentTime, // startTime
+        futureTime, // endTime
+        parseEther("0.01"), // softCapPrice
+      ],
+      { value: parseEther("0.01") }
+    );
+    await publicClient.waitForTransactionReceipt({ hash });
+
+    const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
+    const presaleAddress = presaleEvents[0].args.presale;
+
+    const presaleContract = await hre.viem.getContractAt(
+      "Presale",
+      presaleAddress as `0x${string}`
+    );
+
+    const tokenAddress = await presaleContract.read.token();
+    const token = await hre.viem.getContractAt("MintableERC20", tokenAddress);
+
     return {
-      presaleFactory,
-      presale,
       token,
       owner,
       otherAccount,
-      publicClient,
+      presaleAddress: presaleAddress as `0x${string}`,
     };
   }
 
-  describe("MintableERC20 Initialization", function () {
-    it("should have 0x0.. for the owner address at presale intial creation", async function () {
-      const { owner, presaleFactory, publicClient, token } = await loadFixture(
-        deployMintableERC20
-      );
+  it("should be deployed with the correct name and symbol", async function () {
+    const { token } = await loadFixture(deployToken);
 
-      const initialSupply = 1000n; // Define the initial supply
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
-      const futureTime = currentTime + 3600n; // 1 hour from now
-      const hash = await presaleFactory.write.createPresale([
-        "Example",
-        "EXM",
-        initialSupply,
-        parseEther("0.01"),
-        parseEther("10"), // hardCap
-        currentTime, // startTime
-        futureTime, // endTime
-      ]);
-
-      await publicClient.waitForTransactionReceipt({ hash });
-
-      const address = "0x0000000000000000000000000000000000000000";
-
-      const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-      await expect(presaleEvents).to.have.lengthOf(1);
-
-      const presaleAddress = presaleEvents[0].args.presale; // Accessing the first argument, which is the presale address
-
-      // Verify the owner of the cloned presale contract
-      const presale = await hre.viem.getContractAt(
-        "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
-      );
-
-      const ownerAddress = await presale.read.owner();
-
-      // The owner should be the account that called createPresale (the owner account)
-      await expect(ownerAddress.toLowerCase()).to.equal(owner.account.address.toLowerCase());
-    });
+    expect(await token.read.name()).to.equal("Test Token");
+    expect(await token.read.symbol()).to.equal("TST");
   });
 
-  describe("MintableERC20 Initialization", function () {
-    it("should have 0n for the initial supply at presale creation", async function () {
-      const { owner, presaleFactory, publicClient, token } = await loadFixture(
-        deployMintableERC20
-      );
+  it("should mint initial supply to the deployer", async function () {
+    const { token, owner } = await loadFixture(deployToken);
 
-      const initialSupply = 1000n; // Define the initial supply
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
-      const futureTime = currentTime + 3600n; // 1 hour from now
-      const hash = await presaleFactory.write.createPresale([
-        "Example",
-        "EXM",
-        initialSupply,
-        parseEther("0.01"),
-        parseEther("10"), // hardCap
-        currentTime, // startTime
-        futureTime, // endTime
-      ]);
-
-      await publicClient.waitForTransactionReceipt({ hash });
-
-      const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-      await expect(presaleEvents).to.have.lengthOf(1);
-
-      const presaleAddress = presaleEvents[0].args.presale; // Accessing the first argument, which is the presale address
-
-      // Verify the owner of the cloned presale contract
-      await hre.viem.getContractAt(
-        "PresaleFactory",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
-      );
-
-      const publicClientBalance = await token.read.balanceOf([
-        owner.account.address,
-      ]);
-      const tokenContractBalance = await token.read.balanceOf([token.address]);
-      //debugging
-      console.log(
-        "This is to see the owner address \n" +
-          owner.account.address +
-          "\nis it the same as 0xA0Cf798816D4b9b9866b5330EEa46a18382f251e?",
-        publicClientBalance.toString()
-      );
-
-      await expect(publicClientBalance).to.equal(0n);
-      await expect(tokenContractBalance).to.equal(0n);
-    });
+    const balance = await token.read.balanceOf([owner.account.address]);
+    expect(balance).to.equal(parseEther("1000"));
   });
 
-  describe("MintableERC20 Initialization", function () {
-    it("should create a presale with an empty token name", async function () {
-      const { token, presaleFactory, owner, publicClient } = await loadFixture(
-        deployMintableERC20
-      );
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
-      const futureTime = currentTime + 3600n; // 1 hour from now
-      const hash = await presaleFactory.write.createPresale([
-        "Example",
-        "EXM",
-        1000n,
-        parseEther("0.01"),
-        parseEther("10"), // hardCap
-        currentTime, // startTime
-        futureTime, // endTime
-      ]);
+  it("should allow minter to mint new tokens", async function () {
+    const { token, otherAccount, presaleAddress } = await loadFixture(
+      deployToken
+    );
 
-      await publicClient.waitForTransactionReceipt({ hash });
+    // Grant minter role to otherAccount for testing purposes
+    await token.write.grantRole([
+      await token.read.MINTER_ROLE(),
+      otherAccount.account.address,
+    ]);
 
-      const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-      await expect(presaleEvents).to.have.lengthOf(1);
-
-      const factoryAddress = presaleEvents[0].args.presale; // Accessing the first argument, which is the presale address
-
-      // Verify the owner of the cloned presale contract
-      await hre.viem.getContractAt(
-        "PresaleFactory",
-        factoryAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
-      );
-
-      const name = await token.read.name();
-
-      await expect(name).to.equal("");
+    await token.write.mint([otherAccount.account.address, parseEther("500")], {
+      account: otherAccount.account,
     });
+
+    const balance = await token.read.balanceOf([otherAccount.account.address]);
+    expect(balance).to.equal(parseEther("500"));
   });
 
-  describe("MintableERC20 Initialization", function () {
-    it("should create a presale with a token having 18 decimals", async function () {
-      const { token, presaleFactory, owner, publicClient } = await loadFixture(
-        deployMintableERC20
-      );
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
-      const futureTime = currentTime + 3600n; // 1 hour from now
-      const hash = await presaleFactory.write.createPresale([
-        "Example",
-        "EXM",
-        1000n,
-        parseEther("0.01"),
-        parseEther("10"), // hardCap
-        currentTime, // startTime
-        futureTime, // endTime
-      ]);
+  it("should not allow non-minter to mint new tokens", async function () {
+    const { token, otherAccount } = await loadFixture(deployToken);
 
-      await publicClient.waitForTransactionReceipt({ hash });
-
-      const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-      await expect(presaleEvents).to.have.lengthOf(1);
-
-      const factoryAddress = presaleEvents[0].args.presale; // Accessing the first argument, which is the presale address
-
-      // Verify the owner of the cloned presale contract
-      await hre.viem.getContractAt(
-        "PresaleFactory",
-        factoryAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
-      );
-
-      const decimals = await token.read.decimals();
-
-      await expect(decimals).to.equal(18);
-    });
-  });
-
-  describe("MintableERC20 Initialization", function () {
-    it("should create a presale with a token having an empty symbol", async function () {
-      const { token, presaleFactory, owner, publicClient } = await loadFixture(
-        deployMintableERC20
-      );
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
-      const futureTime = currentTime + 3600n; // 1 hour from now
-      const hash = await presaleFactory.write.createPresale([
-        "Example",
-        "EXM",
-        1000n,
-        parseEther("0.01"),
-        parseEther("10"), // hardCap
-        currentTime, // startTime
-        futureTime, // endTime
-      ]);
-
-      await publicClient.waitForTransactionReceipt({ hash });
-
-      const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-      await expect(presaleEvents).to.have.lengthOf(1);
-
-      const factoryAddress = presaleEvents[0].args.presale; // Accessing the first argument, which is the presale address
-
-      // Verify the owner of the cloned presale contract
-      await hre.viem.getContractAt(
-        "PresaleFactory",
-        factoryAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
-      );
-
-      const symbol = await token.read.symbol();
-
-      await expect(symbol).to.equal("");
-    });
+    await expect(
+      token.write.mint([otherAccount.account.address, parseEther("500")], {
+        account: otherAccount.account,
+      })
+    ).to.be.rejectedWith("AccessControlUnauthorizedAccount");
   });
 });

@@ -21,6 +21,7 @@ import {
   useWaitForTransactionReceipt,
   type BaseError,
   useReadContract,
+  useAccount,
 } from "wagmi";
 import { formatEther, formatUnits, type Address, parseUnits } from "viem";
 
@@ -32,6 +33,7 @@ import { useNativeCurrency } from "@/hooks";
 
 export default function PresaleDetails() {
   const nativeCurrencySymbol = useNativeCurrency();
+  const { address: connectedAddress } = useAccount();
   const { address } = useParams({ from: "/presale-details/$address" });
   const { data: hash, error, isPending, writeContract } = useWriteContract();
   const [tokenAmount, setTokenAmount] = useState("");
@@ -41,6 +43,13 @@ export default function PresaleDetails() {
     abi: presaleAbi,
     address: address as Address,
   } as const;
+
+  const { data: presaleOwner } = useReadContract({
+    ...presaleContract,
+    functionName: "owner",
+  });
+
+  const isOwner = connectedAddress === presaleOwner;
 
   const readTokenAddress = useReadContract({
     ...presaleContract,
@@ -78,6 +87,10 @@ export default function PresaleDetails() {
         ...presaleContract,
         functionName: "hardCap",
       },
+      {
+        ...presaleContract,
+        functionName: "softCap", // Added softCap
+      },
 
       {
         ...presaleContract,
@@ -111,9 +124,10 @@ export default function PresaleDetails() {
         tokenAddress: readTokenAddress.data,
         price: multicallQuery.data[3].result,
         hardCap: multicallQuery.data[5].result,
-        startTime: multicallQuery.data[6].result,
-        endTime: multicallQuery.data[7].result,
-        totalContributed: multicallQuery.data[8].result,
+        softCap: multicallQuery.data[6].result, // Added softCap
+        startTime: multicallQuery.data[7].result,
+        endTime: multicallQuery.data[8].result,
+        totalContributed: multicallQuery.data[9].result,
       };
 
       console.log("=== TOKEN DATA ===");
@@ -135,6 +149,7 @@ export default function PresaleDetails() {
           tokenAddress: presaleData.tokenAddress,
           price: formatEther(presaleData.price ?? 0n),
           hardCap: formatEther(presaleData.hardCap ?? 0n),
+          softCap: formatEther(presaleData.softCap ?? 0n), // Added softCap
           startTime: new Date(
             Number(presaleData.startTime ?? 0n) * 1000
           ).toLocaleString(),
@@ -186,12 +201,18 @@ export default function PresaleDetails() {
     });
 
   const hardCap = multicallQuery.data?.[5].result ?? 0n;
-  const startTime = multicallQuery.data?.[6].result ?? 0n;
-  const endTime = multicallQuery.data?.[7].result ?? 0n;
-  const totalContributed = multicallQuery.data?.[8].result ?? 0n;
+  const softCap = multicallQuery.data?.[6].result ?? 0n; // Added softCap
+  const startTime = multicallQuery.data?.[7].result ?? 0n;
+  const endTime = multicallQuery.data?.[8].result ?? 0n;
+  const totalContributed = multicallQuery.data?.[9].result ?? 0n;
   const tokenPrice = multicallQuery.data?.[3].result ?? 0n;
   const tokenSymbol = multicallQuery.data?.[1].result ?? "";
   const tokenDecimals = multicallQuery.data?.[4].result ?? 18n;
+
+  const currentTime = BigInt(Math.floor(Date.now() / 1000));
+  const hasEnded = currentTime > endTime;
+  const softCapNotReached = softCap > 0n && totalContributed < softCap;
+  const showRefundButton = hasEnded && softCapNotReached;
 
   const progressValue =
     hardCap > 0 ? Number((totalContributed * 100n) / hardCap) : 0;
@@ -303,6 +324,15 @@ export default function PresaleDetails() {
 
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">
+                    Soft Cap
+                  </div>
+                  <div>
+                    {formatEther(softCap)} {nativeCurrencySymbol}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">
                     Start Time
                   </div>
                   <div>
@@ -331,67 +361,126 @@ export default function PresaleDetails() {
                   </div>
                 </div>
               </div>
+
+              {isOwner && (
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold">Owner Actions</h2>
+                  <div className="flex flex-col space-y-2">
+                    <Button
+                      onClick={() => writeContract({
+                        address: address as Address,
+                        abi: presaleAbi,
+                        functionName: "withdrawETH",
+                      })}
+                      disabled={isPending}
+                    >
+                      Withdraw ETH
+                    </Button>
+                    <Button
+                      onClick={() => writeContract({
+                        address: address as Address,
+                        abi: presaleAbi,
+                        functionName: "withdrawToken",
+                        args: [readTokenAddress.data as Address],
+                      })}
+                      disabled={isPending}
+                    >
+                      Withdraw Tokens
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold">Contribute</h2>
-                <p className="text-muted-foreground">
-                  Enter the amount of {tokenSymbol} tokens you want to purchase.
-                </p>
-              </div>
-              <form onSubmit={submit} className="space-y-4">
-                {/* Token Amount Input - Uniswap Style */}
+              {showRefundButton ? (
                 <div className="space-y-2">
-                  <Label htmlFor="amount">From</Label>
-                  <div className="relative rounded-xl bg-card border">
-                    <Input
-                      id="amount"
-                      name="amount"
-                      type="number"
-                      min="0"
-                      step="any"
-                      placeholder="0.0"
-                      value={tokenAmount}
-                      onChange={(e) => setTokenAmount(e.target.value)}
-                      className="h-14 pl-4 pr-20 text-xl border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-medium">
-                      {tokenSymbol}
+                  <h2 className="text-2xl font-bold">Presale Ended</h2>
+                  <p className="text-muted-foreground">
+                    The presale has ended and the soft cap was not reached. You can now withdraw your contributed funds.
+                  </p>
+                  <Button
+                    onClick={() => writeContract({
+                      address: address as Address,
+                      abi: presaleAbi,
+                      functionName: "refund",
+                    })}
+                    disabled={isPending}
+                    className="w-full"
+                  >
+                    {isPending ? "Confirming Refund..." : "Refund"}
+                  </Button>
+                  {hash && <div>Transaction Hash: {hash}</div>}
+                  {isConfirming && <div>Waiting for confirmation...</div>}
+                  {isConfirmed && <div>Transaction confirmed.</div>}
+                  {error && (
+                    <div>
+                      Alert: {(error as BaseError).shortMessage || error.message}
                     </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* ETH Total Display - Uniswap Style */}
-                <div className="space-y-2">
-                  <Label>To</Label>
-                  <div className="relative rounded-xl bg-card border">
-                    <div className="h-14 pl-4 pr-20 text-xl flex items-center border-0 bg-transparent">
-                      {ethTotal}
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold">Contribute</h2>
+                    <p className="text-muted-foreground">
+                      Enter the amount of {tokenSymbol} tokens you want to purchase.
+                    </p>
+                  </div>
+                  <form onSubmit={submit} className="space-y-4">
+                    {/* Token Amount Input - Uniswap Style */}
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">From</Label>
+                      <div className="relative rounded-xl bg-card border">
+                        <Input
+                          id="amount"
+                          name="amount"
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="0.0"
+                          value={tokenAmount}
+                          onChange={(e) => setTokenAmount(e.target.value)}
+                          className="h-14 pl-4 pr-20 text-xl border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-medium">
+                          {tokenSymbol}
+                        </div>
+                      </div>
                     </div>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-medium">
+
+                    {/* ETH Total Display - Uniswap Style */}
+                    <div className="space-y-2">
+                      <Label>To</Label>
+                      <div className="relative rounded-xl bg-card border">
+                        <div className="h-14 pl-4 pr-20 text-xl flex items-center border-0 bg-transparent">
+                          {ethTotal}
+                        </div>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-medium">
+                          {nativeCurrencySymbol}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rate Display */}
+                    <div className="text-sm text-muted-foreground px-1">
+                      1 {tokenSymbol} = {formatEther(tokenPrice)}{" "}
                       {nativeCurrencySymbol}
                     </div>
-                  </div>
-                </div>
 
-                {/* Rate Display */}
-                <div className="text-sm text-muted-foreground px-1">
-                  1 {tokenSymbol} = {formatEther(tokenPrice)}{" "}
-                  {nativeCurrencySymbol}
-                </div>
-
-                <Button type="submit" disabled={isPending} className="w-full">
-                  {isPending ? "Confirming..." : "Contribute"}
-                </Button>
-                {hash && <div>Transaction Hash: {hash}</div>}
-                {isConfirming && <div>Waiting for confirmation...</div>}
-                {isConfirmed && <div>Transaction confirmed.</div>}
-                {error && (
-                  <div>
-                    Alert: {(error as BaseError).shortMessage || error.message}
-                  </div>
-                )}
-              </form>
+                    <Button type="submit" disabled={isPending} className="w-full">
+                      {isPending ? "Confirming..." : "Contribute"}
+                    </Button>
+                    {hash && <div>Transaction Hash: {hash}</div>}
+                    {isConfirming && <div>Waiting for confirmation...</div>}
+                    {isConfirmed && <div>Transaction confirmed.</div>}
+                    {error && (
+                      <div>
+                        Alert: {(error as BaseError).shortMessage || error.message}
+                      </div>
+                    )}
+                  </form>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

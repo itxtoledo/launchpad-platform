@@ -5,9 +5,11 @@ import { TokenCard } from '@/components/TokenCard';
 
 export function MyTokens() {
   const { address: userAddress } = useAccount();
-  const { useGetUserCreatedTokens } = usePresaleFactory();
-
-  const { data: userCreatedTokens, isLoading, isError } = useGetUserCreatedTokens(userAddress!);
+  const { 
+    userCreatedTokens, 
+    isLoadingUserCreatedTokens: isLoading, 
+    isErrorUserCreatedTokens: isError 
+  } = usePresaleFactory();
 
   if (isLoading) return (
     <div className="container mx-auto p-4">
