@@ -118,22 +118,25 @@ describe("PresaleFactory", function () {
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n; // 1 hour from now
 
-      await expect(
+      await viem.assertions.revertWithCustomErrorWithArgs(
         presaleFactory.write.createPresale(
-          [
-            "Example",
-            "EXM",
-            1000n,
-            parseEther("0.01"),
-            parseEther("10"), // hardCap
-            parseEther("5"), // softCap
-            currentTime, // startTime
-            futureTime, // endTime
-            parseEther("0.01"), // softCapPrice
-          ],
+          [{
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("0.01"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("0.01"), // softCapPrice
+          }],
           { value: initialFee - 1n } // Incorrect fee
-        )
-      ).to.be.rejectedWith("IncorrectPresaleCreationFee");
+        ),
+        presaleFactory,
+        "IncorrectPresaleCreationFee",
+        [initialFee - 1n, initialFee]
+      );
     });
 
     it("Should return empty array for out of bounds page", async function () {
@@ -149,17 +152,17 @@ describe("PresaleFactory", function () {
 
       for (let i = 0; i < 12n; i++) {
         const hash = await presaleFactory.write.createPresale(
-          [
-            `Example${i}`,
-            `EXM${i}`,
-            1000n,
-            parseEther("0.01"),
-            parseEther("10"), // hardCap
-            parseEther("5"), // softCap
-            currentTime, // startTime
-            futureTime, // endTime
-            parseEther("0.01"), // softCapPrice
-          ],
+          [{
+            name: `Example${i}`,
+            symbol: `EXM${i}`,
+            supply: 1000n,
+            price: parseEther("0.01"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("0.01"), // softCapPrice
+          }],
           { value: initialFee } // Pass the fee
         );
         await publicClient.waitForTransactionReceipt({ hash });
@@ -182,11 +185,13 @@ describe("PresaleFactory", function () {
 
     it("Should revert if non-owner tries to set new presale creation fee", async function () {
       const newFee = parseEther("0.02");
-      await expect(
+      await viem.assertions.revertWithCustomError(
         presaleFactory.write.setPresaleCreationFee([newFee], {
           account: otherAccount.account,
-        })
-      ).to.be.rejectedWith("OwnableUnauthorizedAccount"); // Updated error message
+        }),
+        presaleFactory,
+        "OwnableUnauthorizedAccount"
+      );
     });
 
     it("Should allow owner to withdraw fees from the factory", async function () {
@@ -195,17 +200,17 @@ describe("PresaleFactory", function () {
 
       // Create a presale to deposit fees into the factory
       const hash = await presaleFactory.write.createPresale(
-        [
-          "Example",
-          "EXM",
-          1000n,
-          parseEther("0.01"),
-          parseEther("10"), // hardCap
-          parseEther("5"), // softCap
-          currentTime, // startTime
-          futureTime, // endTime
-          parseEther("0.01"), // softCapPrice
-        ],
+        [{
+          name: "Example",
+          symbol: "EXM",
+          supply: 1000n,
+          price: parseEther("0.01"),
+          hardCap: parseEther("10"), // hardCap
+          softCap: parseEther("5"), // softCap
+          startTime: currentTime, // startTime
+          endTime: futureTime, // endTime
+          softCapPrice: parseEther("0.01"), // softCapPrice
+        }],
         { value: initialFee } // Pass the fee
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -235,9 +240,11 @@ describe("PresaleFactory", function () {
     });
 
     it("Should revert if non-owner tries to withdraw fees", async function () {
-      await expect(
-        presaleFactory.write.withdrawFees({ account: otherAccount.account })
-      ).to.be.rejectedWith("OwnableUnauthorizedAccount");
+      await viem.assertions.revertWithCustomError(
+        presaleFactory.write.withdrawFees({ account: otherAccount.account }),
+        presaleFactory,
+        "OwnableUnauthorizedAccount"
+      );
     });
   });
 
@@ -249,17 +256,17 @@ describe("PresaleFactory", function () {
         const futureTime = startTime + 3600n; // 1 hour from now
 
         const hash = await presaleFactory.write.createPresale(
-          [
-            "Example",
-            "EXM",
-            1000n,
-            parseEther("1"),
-            parseEther("10"), // hardCap
-            parseEther("5"), // softCap
-            startTime, // startTime
-            futureTime, // endTime
-            parseEther("1"), // softCapPrice
-          ],
+          [{
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: startTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          }],
           { value: initialFee } // Pass the fee
         );
 
@@ -298,17 +305,17 @@ describe("PresaleFactory", function () {
         const futureTime = currentTime + 3600n; // 1 hour from now
 
         const hash = await presaleFactory.write.createPresale(
-          [
-            "Example",
-            "EXM",
-            1000n,
-            1n,
-            parseEther("10"), // hardCap
-            parseEther("5"), // softCap
-            currentTime, // startTime
-            futureTime, // endTime
-            1n, // softCapPrice
-          ],
+          [{
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: 1n,
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: 1n, // softCapPrice
+          }],
           { value: initialFee } // Pass the fee
         );
         await publicClient.waitForTransactionReceipt({ hash });

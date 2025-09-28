@@ -1,4 +1,3 @@
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { beforeEach, describe, it } from "node:test";
 import { expect } from "chai";
 import hre from "hardhat";
@@ -9,7 +8,8 @@ import {
   WalletClient,
 } from "viem";
 
-const { viem } = await hre.network.connect();
+const { viem, networkHelpers } = await hre.network.connect();
+const time = networkHelpers.time;
 
 describe("Presale Enhanced Tests", function () {
   let presaleFactory: GetContractReturnType;
@@ -18,23 +18,9 @@ describe("Presale Enhanced Tests", function () {
   let publicClient: PublicClient;
 
   beforeEach(async function () {
-    const presale = await hre.viem.deployContract("Presale");
-    const token = await hre.viem.deployContract("MintableERC20");
-    const [ownerClient, otherAccountClient] = await hre.viem.getWalletClients();
-    owner = ownerClient;
-    otherAccount = otherAccountClient;
-
-    const initialFee = parseEther("0.01");
-
-    presaleFactory = await hre.viem.deployContract("PresaleFactory", [
-      presale.address,
-      token.address,
-      initialFee,
-      owner.account.address,
-    ]);
-
-    publicClient = await hre.viem.getPublicClient();
-  });
+    const presale = await viem.deployContract("Presale");
+    const token = await viem.deployContract("MintableERC20");
+    const [ownerClient, otherAccountClient] = await viem.getWalletClients();
 
   describe("Soft Cap with Time Limit Requirements", function () {
     it("Should revert if softcap is set but no time limit", async function () {
@@ -43,15 +29,17 @@ describe("Presale Enhanced Tests", function () {
       await expect(
         presaleFactory.write.createPresale(
           [
-            "Example",
-            "EXM",
-            1000n,
-            parseEther("1"),
-            parseEther("10"), // hardCap
-            parseEther("5"), // softCap
-            currentTime, // startTime
-            0n, // endTime (no time limit)
-            parseEther("1"), // softCapPrice
+            {
+              name: "Example",
+              symbol: "EXM",
+              supply: 1000n,
+              price: parseEther("1"),
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: currentTime, // startTime
+              endTime: 0n, // endTime (no time limit)
+              softCapPrice: parseEther("1"), // softCapPrice
+            },
           ],
           { value: parseEther("0.01") }
         )
@@ -82,7 +70,7 @@ describe("Presale Enhanced Tests", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -112,15 +100,17 @@ describe("Presale Enhanced Tests", function () {
 
       const hash = await presaleFactory.write.createPresale(
         [
-          "Example",
-          "EXM",
-          1000n,
-          parseEther("1"),
-          parseEther("10"), // hardCap
-          parseEther("5"), // softCap
-          startTime, // startTime
-          endTime, // endTime
-          parseEther("1"), // softCapPrice
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: startTime, // startTime
+            endTime: endTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
         ],
         { value: parseEther("0.01") }
       );
@@ -129,7 +119,7 @@ describe("Presale Enhanced Tests", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -173,15 +163,17 @@ describe("Presale Enhanced Tests", function () {
 
       const hash = await presaleFactory.write.createPresale(
         [
-          "Example",
-          "EXM",
-          1000n,
-          parseEther("1"),
-          parseEther("10"), // hardCap
-          parseEther("5"), // softCap
-          startTime, // startTime
-          endTime, // endTime
-          parseEther("1"), // softCapPrice
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: startTime, // startTime
+            endTime: endTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
         ],
         { value: parseEther("0.01") }
       );
@@ -190,7 +182,7 @@ describe("Presale Enhanced Tests", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {

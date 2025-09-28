@@ -29,6 +29,7 @@ describe("MintableERC20", function () {
       presale.address,
       tokenImplementation.address,
       initialFee,
+      owner.account.address,
     ]);
 
     const publicClient = await viem.getPublicClient();
@@ -37,17 +38,17 @@ describe("MintableERC20", function () {
     const futureTime = currentTime + 3600n;
 
     const hash = await presaleFactory.write.createPresale(
-      [
-        "Test Token",
-        "TST",
-        parseEther("1000"),
-        parseEther("0.01"),
-        parseEther("10"), // hardCap
-        parseEther("5"), // softCap
-        currentTime, // startTime
-        futureTime, // endTime
-        parseEther("0.01"), // softCapPrice
-      ],
+      [{
+        name: "Test Token",
+        symbol: "TST",
+        supply: parseEther("1000"),
+        price: parseEther("0.01"),
+        hardCap: parseEther("10"), // hardCap
+        softCap: parseEther("5"), // softCap
+        startTime: currentTime, // startTime
+        endTime: futureTime, // endTime
+        softCapPrice: parseEther("0.01"), // softCapPrice
+      }],
       { value: parseEther("0.01") }
     );
     await publicClient.waitForTransactionReceipt({ hash });
@@ -90,10 +91,12 @@ describe("MintableERC20", function () {
   });
 
   it("should not allow non-minter to mint new tokens", async function () {
-    await expect(
+    await viem.assertions.revertWithCustomError(
       token.write.mint([otherAccount.account.address, parseEther("500")], {
         account: otherAccount.account,
-      })
-    ).to.be.rejectedWith("AccessControlUnauthorizedAccount");
+      }),
+      token,
+      "AccessControlUnauthorizedAccount"
+    );
   });
 });
