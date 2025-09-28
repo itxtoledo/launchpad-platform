@@ -35,7 +35,7 @@ contract Presale is OwnableUpgradeable {
     bool public softCapReached;
 
     function presaleFailed() public view returns (bool) {
-        return hasSoftCap() && !softCapReached && block.timestamp > endTime;
+        return hasSoftCap() && block.timestamp > endTime && !softCapReached;
     }
 
     mapping(address => uint256) public tokenContributions;
@@ -89,16 +89,17 @@ contract Presale is OwnableUpgradeable {
     function contribute(uint256 amount) external payable {
         if (block.timestamp < startTime) revert PresaleNotStarted();
 
-        // If presale failed (time is up and softcap not reached), don't allow contributions
-        if (presaleFailed()) {
-            revert PresaleFailedNoRefund();
-        }
-
         // Check if we're past the end time (but not yet failed, meaning soft cap was reached)
         if (endTime != 0 && block.timestamp > endTime) {
+            // If the presale has ended and hasn't reached soft cap, contributions are not allowed
+            if (hasSoftCap() && !softCapReached) {
+                revert PresaleFailedNoRefund();
+            }
+            // If time is up regardless of soft cap status, no new contributions allowed
             revert PresaleEnded();
         }
 
+        // Determine the price to use for this contribution (before updating softCapReached)
         uint256 total = amount * currentPrice();
 
         if (total != msg.value) revert InvalidEtherSent(msg.value, total);
@@ -108,9 +109,13 @@ contract Presale is OwnableUpgradeable {
 
         totalContributed += msg.value;
         ethContributions[msg.sender] += msg.value;
+
+        // Add the tokens based on the amount contributed using the current price at time of contribution
         tokenContributions[msg.sender] += amount * 10 ** token.decimals();
 
-        if (!softCapReached && totalContributed >= softCap) {
+        // Check if soft cap is reached after the contribution
+        // Only update if soft cap is set (greater than 0)
+        if (!softCapReached && hasSoftCap() && totalContributed >= softCap) {
             softCapReached = true;
         }
 

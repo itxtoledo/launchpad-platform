@@ -185,34 +185,38 @@ export default function PresaleCreation() {
       endTimeUnix
     );
     console.log("- No Time Limit:", values.noTimeLimit);
-    console.log("- Full args array:", [{
-      name: values.name,
-      symbol: values.symbol,
-      supply: BigInt(cleanSupply),
-      price: priceinETH,
-      hardCap: hardCapInETH,
-      softCap: softCapInETH,
-      startTime: BigInt(startTimeUnix),
-      endTime: BigInt(endTimeUnix),
-      softCapPrice: softCapPriceInETH,
-    }]);
+    console.log("- Full args array:", [
+      {
+        name: values.name,
+        symbol: values.symbol,
+        supply: BigInt(cleanSupply),
+        price: priceinETH,
+        hardCap: hardCapInETH,
+        softCap: softCapInETH,
+        startTime: BigInt(startTimeUnix),
+        endTime: BigInt(endTimeUnix),
+        softCapPrice: softCapPriceInETH,
+      },
+    ]);
 
     if (contractAddress) {
       createPresale({
         address: contractAddress,
         abi: PresaleFactoryABI,
         functionName: "createPresale",
-        args: [{
-          name: values.name,
-          symbol: values.symbol,
-          supply: BigInt(cleanSupply),
-          price: priceinETH,
-          hardCap: hardCapInETH,
-          softCap: softCapInETH,
-          startTime: BigInt(startTimeUnix),
-          endTime: BigInt(endTimeUnix),
-          softCapPrice: softCapPriceInETH,
-        }],
+        args: [
+          {
+            name: values.name,
+            symbol: values.symbol,
+            supply: BigInt(cleanSupply),
+            price: priceinETH,
+            hardCap: hardCapInETH,
+            softCap: softCapInETH,
+            startTime: BigInt(startTimeUnix),
+            endTime: BigInt(endTimeUnix),
+            softCapPrice: softCapPriceInETH,
+          },
+        ],
       });
     }
   }
@@ -453,13 +457,18 @@ export default function PresaleCreation() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    End Time {form.watch("hasSoftCap") && <span className="text-red-500">*</span>}
+                    End Time{" "}
+                    {form.watch("hasSoftCap") && (
+                      <span className="text-red-500">*</span>
+                    )}
                   </FormLabel>
                   <FormControl>
                     <Input
                       type="datetime-local"
                       {...field}
-                      disabled={form.watch("noTimeLimit") || form.watch("hasSoftCap")}
+                      disabled={
+                        form.watch("noTimeLimit") || form.watch("hasSoftCap")
+                      }
                     />
                   </FormControl>
                   <FormDescription>
