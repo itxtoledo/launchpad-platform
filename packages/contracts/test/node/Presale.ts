@@ -1,44 +1,50 @@
-import {
-  loadFixture,
-  time,
-} from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import { beforeEach, describe, it } from "node:test";
 import { expect } from "chai";
+import { network } from "hardhat";
+import {
+  GetContractReturnType,
+  parseEther,
+  PublicClient,
+  WalletClient,
+} from "viem";
 import hre from "hardhat";
-import { parseEther } from "viem";
+
+const { viem } = await hre.network.connect();
 
 describe("Presale", function () {
-  async function deployPresale() {
-    const presale = await hre.viem.deployContract("Presale");
-    const token = await hre.viem.deployContract("MintableERC20");
+  let presaleFactory: GetContractReturnType;
+  let owner: WalletClient;
+  let otherAccount: WalletClient;
+  let publicClient: PublicClient;
+  let viem: any;
+  let networkHelpers: any;
 
-    const [owner, otherAccount] = await hre.viem.getWalletClients();
+  beforeEach(async function () {
+    const { viem: connectedViem, networkHelpers: connectedNetworkHelpers } =
+      await network.connect();
+    viem = connectedViem;
+    networkHelpers = connectedNetworkHelpers;
+
+    const presale = await viem.deployContract("Presale");
+    const token = await viem.deployContract("MintableERC20");
+    const [ownerClient, otherAccountClient] = await viem.getWalletClients();
+    owner = ownerClient;
+    otherAccount = otherAccountClient;
 
     const initialFee = parseEther("0.01");
 
-    const presaleFactory = await hre.viem.deployContract("PresaleFactory", [
+    presaleFactory = await viem.deployContract("PresaleFactory", [
       presale.address,
       token.address,
       initialFee,
+      owner.account.address,
     ]);
 
-    const publicClient = await hre.viem.getPublicClient();
-
-    return {
-      presaleFactory,
-      presale,
-      token,
-      owner,
-      otherAccount,
-      publicClient,
-    };
-  }
+    publicClient = await viem.getPublicClient();
+  });
 
   describe("Soft Cap Logic", function () {
     it("Should not allow token claim before soft cap is reached", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -61,7 +67,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -77,10 +83,6 @@ describe("Presale", function () {
     });
 
     it("Should not allow owner to withdraw ETH before soft cap is reached", async function () {
-      const { presaleFactory, publicClient, owner } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -103,7 +105,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -117,10 +119,6 @@ describe("Presale", function () {
     });
 
     it("Should set softCapReached to true when soft cap is met", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -143,7 +141,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -158,10 +156,6 @@ describe("Presale", function () {
     });
 
     it("Should allow token claim after soft cap is reached", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -184,7 +178,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -195,7 +189,7 @@ describe("Presale", function () {
       await presale.write.contribute([6n], { value: parseEther("6") });
 
       const clonedTokenAddress = await presale.read.token();
-      const clonedToken = await hre.viem.getContractAt(
+      const clonedToken = await viem.getContractAt(
         "MintableERC20",
         clonedTokenAddress
       );
@@ -209,9 +203,6 @@ describe("Presale", function () {
     });
 
     it("Should allow owner to withdraw ETH after soft cap is reached", async function () {
-      const { presaleFactory, publicClient, owner, otherAccount } =
-        await loadFixture(deployPresale);
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -234,7 +225,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presaleForOther = await hre.viem.getContractAt(
+      const presaleForOther = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -244,7 +235,7 @@ describe("Presale", function () {
 
       await presaleForOther.write.contribute([6n], { value: parseEther("6") });
 
-      const presaleForOwner = await hre.viem.getContractAt(
+      const presaleForOwner = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -268,10 +259,6 @@ describe("Presale", function () {
     });
 
     it("Should allow user to get a refund if soft cap is not reached and presale ended", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 10n; // very short presale
 
@@ -294,7 +281,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -305,7 +292,7 @@ describe("Presale", function () {
       await presale.write.contribute([1n], { value: parseEther("1") });
 
       // Increase time to after the presale ends
-      await time.increaseTo(futureTime + 1n);
+      await networkHelpers.time.increaseTo(futureTime + 1n);
 
       const initialBalance = await publicClient.getBalance({
         address: otherAccount.account.address,
@@ -327,10 +314,6 @@ describe("Presale", function () {
     });
 
     it("Should not allow refund if soft cap is reached", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -353,7 +336,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -363,18 +346,14 @@ describe("Presale", function () {
 
       await presale.write.contribute([6n], { value: parseEther("6") });
 
-      await time.increaseTo(futureTime + 1n);
+      await networkHelpers.time.increaseTo(futureTime + 1n);
 
       await expect(presale.write.refund()).to.be.rejectedWith(
         "SoftCapAlreadyReached"
       );
     });
 
-    it("Should not allow token claim if soft cap is not reached", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
+    it("Should not allow token claim if soft cap is not reached and presale has ended (failed)", async function () {
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -397,7 +376,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {
@@ -407,18 +386,60 @@ describe("Presale", function () {
 
       await presale.write.contribute([1n], { value: parseEther("1") });
 
-      await time.increaseTo(futureTime + 1n);
+      await networkHelpers.time.increaseTo(futureTime + 1n);
 
       await expect(presale.write.claimTokens()).to.be.rejectedWith(
-        "SoftCapNotReached"
+        "PresaleFailed"
+      );
+    });
+
+    it("Should revert with PresaleFailed error when trying to claim tokens in a failed presale", async function () {
+      const currentTime = BigInt(Math.floor(Date.now() / 1000));
+      const futureTime = currentTime + 10n; // very short presale
+
+      const hash = await presaleFactory.write.createPresale(
+        [
+          "Example",
+          "EXM",
+          1000n,
+          parseEther("1"),
+          parseEther("10"), // hardCap
+          parseEther("5"), // softCap
+          currentTime, // startTime
+          futureTime, // endTime,
+          parseEther("1"), // softCapPrice
+        ],
+        { value: parseEther("0.01") }
+      );
+      await publicClient.waitForTransactionReceipt({ hash });
+
+      const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
+      const presaleAddress = presaleEvents[0].args.presale;
+
+      const presale = await viem.getContractAt(
+        "Presale",
+        presaleAddress as `0x${string}`,
+        {
+          client: { wallet: otherAccount },
+        }
+      );
+
+      await presale.write.contribute([1n], { value: parseEther("1") });
+
+      // Increase time to after the presale ends (without reaching soft cap)
+      await networkHelpers.time.increaseTo(futureTime + 1n);
+
+      // Check that presaleFailed() returns true
+      const presaleFailed = await presale.read.presaleFailed();
+      expect(presaleFailed).to.be.true;
+
+      // Try to claim tokens - should revert with PresaleFailed error
+      await expect(presale.write.claimTokens()).to.be.rejectedWith(
+        "PresaleFailed"
       );
     });
 
     it("Should revert if softCap is set and softCapPrice is 0", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -441,10 +462,6 @@ describe("Presale", function () {
     });
 
     it("Should revert if softCapPrice is less than price", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -467,10 +484,6 @@ describe("Presale", function () {
     });
 
     it("Should use softCapPrice when softCap is reached", async function () {
-      const { presaleFactory, publicClient, otherAccount } = await loadFixture(
-        deployPresale
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n;
 
@@ -494,7 +507,7 @@ describe("Presale", function () {
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
       const presaleAddress = presaleEvents[0].args.presale;
 
-      const presale = await hre.viem.getContractAt(
+      const presale = await viem.getContractAt(
         "Presale",
         presaleAddress as `0x${string}`,
         {

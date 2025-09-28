@@ -50,10 +50,6 @@ export function usePresaleFactory() {
     },
   });
 
-  const isOwner = useMemo(() => {
-    return ownerAddress === address;
-  }, [ownerAddress, address]);
-
   const {
     data: factoryBalance,
     isLoading: isLoadingFactoryBalance,
@@ -130,6 +126,10 @@ export function usePresaleFactory() {
     },
   });
 
+  const isOwner = useMemo(() => {
+    return ownerAddress === address;
+  }, [ownerAddress, address]);
+
   return {
     // Contract address
     contractAddress,
@@ -175,4 +175,3 @@ export function usePresaleFactory() {
     isWriteSuccess,
   };
 }
-

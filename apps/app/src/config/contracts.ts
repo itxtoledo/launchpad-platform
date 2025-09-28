@@ -1,7 +1,7 @@
 import { bscTestnet } from "wagmi/chains";
 
 export const contracts = {
-  [bscTestnet.id]: "0x7724bF73CF461979bBa0E553db39a641F6e2A9A3",
+  [bscTestnet.id]: "0xc893aFE19dE4008F01a2C7d3c4Fd84cFDb4ea7eD",
 } as const;
 
 export const factoryAddress = contracts[bscTestnet.id];

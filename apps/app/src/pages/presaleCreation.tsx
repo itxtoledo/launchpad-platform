@@ -31,7 +31,7 @@ import { useWaitForTransactionReceipt, type BaseError } from "wagmi";
 import { usePresaleFactory } from "@/hooks/usePresaleFactory";
 import { useNativeCurrency } from "@/hooks";
 import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
-import { parseEther, parseEventLogs } from "viem";
+import { parseEther, parseEventLogs, formatEther } from "viem";
 import {
   formatNumberWithThousands,
   removeThousandSeparators,
@@ -94,6 +94,8 @@ export default function PresaleCreation() {
     isCreatePresalePending,
     isCreatePresaleError,
     createPresaleError,
+    presaleCreationFee,
+    isLoadingPresaleFee,
   } = usePresaleFactory();
 
   const form = useForm<PresaleFormData>({
@@ -121,19 +123,29 @@ export default function PresaleCreation() {
     maxSupply = parseFloat(hardCap) / parseFloat(price);
   }
 
+  // Format the presale creation fee for display
+  const formatFee = (fee: bigint | undefined) => {
+    if (!fee) return "0";
+    return parseFloat(formatEther(fee)).toString();
+  };
+
   async function onSubmit(values: PresaleFormData) {
     // Remove any formatting from the supply value before converting to BigInt
     const cleanSupply = values.supply.toString().replace(/\s/g, "");
     const priceinETH = parseEther(values.price);
     const hardCapInETH = parseEther(values.hardCap);
-    const softCapInETH = values.hasSoftCap ? parseEther(values.softCap) : parseEther("0"); // Conditionally set softCapInETH
-    const softCapPriceInETH = values.hasSoftCap ? parseEther(values.softCapPrice) : parseEther("0"); // Conditionally set softCapPriceInETH
+    const softCapInETH = values.hasSoftCap
+      ? parseEther(values.softCap)
+      : parseEther("0"); // Conditionally set softCapInETH
+    const softCapPriceInETH = values.hasSoftCap
+      ? parseEther(values.softCapPrice)
+      : parseEther("0"); // Conditionally set softCapPriceInETH
 
     // Convert date strings to Unix timestamps
     const startTimeUnix = Math.floor(
       new Date(values.startTime).getTime() / 1000
     );
-    
+
     let endTimeUnix: number;
     if (values.noTimeLimit) {
       endTimeUnix = 0; // Send 0 to indicate no time limit
@@ -141,7 +153,9 @@ export default function PresaleCreation() {
       endTimeUnix = Math.floor(new Date(values.endTime).getTime() / 1000);
     } else {
       // This shouldn't happen due to form validation, but added for safety
-      throw new Error("End time is required unless 'No time limit' is selected");
+      throw new Error(
+        "End time is required unless 'No time limit' is selected"
+      );
     }
 
     // Log the parameters being sent to the blockchain
@@ -151,39 +165,54 @@ export default function PresaleCreation() {
     console.log("- Supply:", cleanSupply);
     console.log("- Price (ETH):", values.price, "->", priceinETH);
     console.log("- Hard Cap (ETH):", values.hardCap, "->", hardCapInETH);
-    console.log("- Soft Cap (ETH):", values.hasSoftCap ? values.softCap : "0", "->", softCapInETH); // Updated softCap log
-    console.log("- Soft Cap Price (ETH):", values.hasSoftCap ? values.softCapPrice : "0", "->", softCapPriceInETH); // Updated softCapPrice log
+    console.log(
+      "- Soft Cap (ETH):",
+      values.hasSoftCap ? values.softCap : "0",
+      "->",
+      softCapInETH
+    ); // Updated softCap log
+    console.log(
+      "- Soft Cap Price (ETH):",
+      values.hasSoftCap ? values.softCapPrice : "0",
+      "->",
+      softCapPriceInETH
+    ); // Updated softCapPrice log
     console.log("- Start Time:", values.startTime, "-> Unix:", startTimeUnix);
-    console.log("- End Time:", values.noTimeLimit ? "No time limit (0)" : values.endTime, "-> Unix:", endTimeUnix);
+    console.log(
+      "- End Time:",
+      values.noTimeLimit ? "No time limit (0)" : values.endTime,
+      "-> Unix:",
+      endTimeUnix
+    );
     console.log("- No Time Limit:", values.noTimeLimit);
-    console.log("- Full args array:", [
-      values.name,
-      values.symbol,
-      BigInt(cleanSupply),
-      priceinETH,
-      hardCapInETH,
-      softCapInETH,
-      BigInt(startTimeUnix),
-      BigInt(endTimeUnix),
-      softCapPriceInETH,
-    ]);
+    console.log("- Full args array:", [{
+      name: values.name,
+      symbol: values.symbol,
+      supply: BigInt(cleanSupply),
+      price: priceinETH,
+      hardCap: hardCapInETH,
+      softCap: softCapInETH,
+      startTime: BigInt(startTimeUnix),
+      endTime: BigInt(endTimeUnix),
+      softCapPrice: softCapPriceInETH,
+    }]);
 
     if (contractAddress) {
       createPresale({
         address: contractAddress,
         abi: PresaleFactoryABI,
         functionName: "createPresale",
-        args: [
-          values.name,
-          values.symbol,
-          BigInt(cleanSupply),
-          priceinETH,
-          hardCapInETH,
-          softCapInETH,
-          BigInt(startTimeUnix),
-          BigInt(endTimeUnix),
-          softCapPriceInETH,
-        ],
+        args: [{
+          name: values.name,
+          symbol: values.symbol,
+          supply: BigInt(cleanSupply),
+          price: priceinETH,
+          hardCap: hardCapInETH,
+          softCap: softCapInETH,
+          startTime: BigInt(startTimeUnix),
+          endTime: BigInt(endTimeUnix),
+          softCapPrice: softCapPriceInETH,
+        }],
       });
     }
   }
@@ -355,17 +384,22 @@ export default function PresaleCreation() {
                         />
                       </FormControl>
                       <FormDescription>
-                        The minimum amount of {nativeCurrencySymbol} to be raised in
-                        the presale for it to be considered successful.
+                        The minimum amount of {nativeCurrencySymbol} to be
+                        raised in the presale for it to be considered
+                        successful.
                       </FormDescription>
                       <FormDescription>
-                        The presale owner will only be able to withdraw the raised amount if the soft cap is defined and reached.
+                        The presale owner will only be able to withdraw the
+                        raised amount if the soft cap is defined and reached.
                       </FormDescription>
-                      {form.watch("hasSoftCap") && !form.watch("noTimeLimit") && (
-                        <FormDescription>
-                          If a soft cap is defined and not reached by the end of the presale, contributors will be able to withdraw their contributed funds.
-                        </FormDescription>
-                      )}
+                      {form.watch("hasSoftCap") &&
+                        !form.watch("noTimeLimit") && (
+                          <FormDescription>
+                            If a soft cap is defined and not reached by the end
+                            of the presale, contributors will be able to
+                            withdraw their contributed funds.
+                          </FormDescription>
+                        )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -375,7 +409,9 @@ export default function PresaleCreation() {
                   name="softCapPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Soft Cap Price ({nativeCurrencySymbol})</FormLabel>
+                      <FormLabel>
+                        Soft Cap Price ({nativeCurrencySymbol})
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -385,7 +421,8 @@ export default function PresaleCreation() {
                         />
                       </FormControl>
                       <FormDescription>
-                        The price of a single token in {nativeCurrencySymbol} if the soft cap is reached.
+                        The price of a single token in {nativeCurrencySymbol} if
+                        the soft cap is reached.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -415,42 +452,47 @@ export default function PresaleCreation() {
               name="endTime"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>End Time</FormLabel>
+                  <FormLabel>
+                    End Time {form.watch("hasSoftCap") && <span className="text-red-500">*</span>}
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="datetime-local" 
-                      {...field} 
-                      disabled={form.watch("noTimeLimit")}
+                    <Input
+                      type="datetime-local"
+                      {...field}
+                      disabled={form.watch("noTimeLimit") || form.watch("hasSoftCap")}
                     />
                   </FormControl>
                   <FormDescription>
-                    The end date and time of the presale.
+                    {form.watch("hasSoftCap")
+                      ? "The end date and time of the presale. Required when Soft Cap is enabled."
+                      : "The end date and time of the presale. Required unless &quot;No time limit&quot; is selected."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="noTimeLimit"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>No time limit</FormLabel>
-                    <FormDescription>
-                      Check this to set no end time for the presale
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-
+            {!form.watch("hasSoftCap") && (
+              <FormField
+                control={form.control}
+                name="noTimeLimit"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>No time limit</FormLabel>
+                      <FormDescription>
+                        Check this to set no end time for the presale
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
 
             {maxSupply > 0 && (
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -466,12 +508,35 @@ export default function PresaleCreation() {
               </div>
             )}
             <Button
-              disabled={isCreatePresalePending}
+              disabled={isCreatePresalePending || isLoadingPresaleFee}
               type="submit"
               className="w-full"
             >
-              {isCreatePresalePending ? "Confirming..." : "Create Presale"}
+              {isCreatePresalePending
+                ? "Confirming..."
+                : isLoadingPresaleFee
+                ? "Loading fee..."
+                : `Create Presale (${formatFee(
+                    presaleCreationFee
+                  )} ${nativeCurrencySymbol})`}
             </Button>
+            <div className="mt-4 text-sm text-gray-600">
+              <p className="font-medium">Fee Information:</p>
+              <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li>
+                  The fee shown in parentheses ({formatFee(presaleCreationFee)}{" "}
+                  {nativeCurrencySymbol}) is the presale creation fee
+                </li>
+                <li>
+                  You will also pay network fees (gas) to execute this
+                  transaction
+                </li>
+                <li>
+                  Additionally, when withdrawing raised funds, a 1% fee of the
+                  total amount will be charged to the factory
+                </li>
+              </ul>
+            </div>
           </form>
         </Form>
       </CardContent>

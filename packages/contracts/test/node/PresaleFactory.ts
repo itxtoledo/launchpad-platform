@@ -1,46 +1,42 @@
-import {
-  loadFixture,
-  time,
-} from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import { beforeEach, describe, it } from "node:test";
 import { expect } from "chai";
 import hre from "hardhat";
-import { parseEther } from "viem";
+import { parseEther, PublicClient, WalletClient } from "viem";
+import { ContractReturnType } from "@nomicfoundation/hardhat-viem/types";
+const { viem, networkHelpers } = await hre.network.connect();
+
+const time = networkHelpers.time;
 
 describe("PresaleFactory", function () {
-  async function deployFactory() {
-    const presale = await hre.viem.deployContract("Presale");
-    const token = await hre.viem.deployContract("MintableERC20");
+  let presaleFactory: ContractReturnType<"PresaleFactory">;
+  let presale: ContractReturnType<"Presale">;
+  let token: ContractReturnType<"MintableERC20">;
+  let owner: WalletClient;
+  let otherAccount: WalletClient;
+  let publicClient: PublicClient;
+  let initialFee: bigint;
 
-    const [owner, otherAccount] = await hre.viem.getWalletClients();
+  beforeEach(async function () {
+    presale = await viem.deployContract("Presale");
+    token = await viem.deployContract("MintableERC20");
+    const [ownerClient, otherAccountClient] = await viem.getWalletClients();
+    owner = ownerClient;
+    otherAccount = otherAccountClient;
 
-    // Define initial fee
-    const initialFee = parseEther("0.01"); // Example: 0.01 ETH
+    initialFee = parseEther("0.01"); // Example: 0.01 ETH
 
-    const presaleFactory = await hre.viem.deployContract("PresaleFactory", [
+    presaleFactory = await viem.deployContract("PresaleFactory", [
       presale.address,
       token.address,
       initialFee,
+      owner.account!.address,
     ]);
 
-    const publicClient = await hre.viem.getPublicClient();
-
-    return {
-      presaleFactory,
-      presale,
-      token,
-      owner,
-      otherAccount,
-      publicClient,
-      initialFee, // Return initialFee for testing
-    };
-  }
+    publicClient = await viem.getPublicClient();
+  });
 
   describe("Initialization", function () {
     it("should initialize with correct presale and token addresses", async function () {
-      const { presaleFactory, presale, token } = await loadFixture(
-        deployFactory
-      );
-
       const factoryPresaleAddress = await presaleFactory.read.presale();
       const factoryTokenAddress = await presaleFactory.read.token();
 
@@ -55,14 +51,12 @@ describe("PresaleFactory", function () {
     });
 
     it("should initialize with the correct owner", async function () {
-      const { presaleFactory, owner } = await loadFixture(deployFactory);
       expect((await presaleFactory.read.owner()).toLowerCase()).to.equal(
-        owner.account.address.toLowerCase()
+        owner.account!.address.toLowerCase()
       );
     });
 
     it("should initialize with the correct presale creation fee", async function () {
-      const { presaleFactory, initialFee } = await loadFixture(deployFactory);
       expect(await presaleFactory.read.presaleCreationFee()).to.equal(
         initialFee
       );
@@ -71,14 +65,11 @@ describe("PresaleFactory", function () {
 
   describe("Presale Creation and Pagination", function () {
     it("Should create a presale and return it in paginated results", async function () {
-      const { presaleFactory, publicClient, initialFee, owner } =
-        await loadFixture(deployFactory);
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n; // 1 hour from now
 
       const initialOwnerBalance = await publicClient.getBalance({
-        address: owner.account.address,
+        address: owner.account!.address,
       });
       const initialFactoryBalance = await publicClient.getBalance({
         address: presaleFactory.address,
@@ -86,22 +77,24 @@ describe("PresaleFactory", function () {
 
       const hash = await presaleFactory.write.createPresale(
         [
-          "Example",
-          "EXM",
-          1000n,
-          parseEther("0.01"),
-          parseEther("10"), // hardCap
-          parseEther("5"), // softCap
-          currentTime, // startTime
-          futureTime, // endTime
-          parseEther("0.01"), // softCapPrice
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            endTime: futureTime,
+            hardCap: parseEther("10"), // hardCap
+            startTime: currentTime, // startTime
+            softCapPrice: parseEther("0.01"), // softCapPrice
+            softCap: parseEther("5"), // soft
+            price: parseEther("0.01"), // softCapPrice
+          },
         ],
         { value: initialFee } // Pass the fee
       );
       await publicClient.waitForTransactionReceipt({ hash });
 
       const finalOwnerBalance = await publicClient.getBalance({
-        address: owner.account.address,
+        address: owner.account!.address,
       });
       expect(finalOwnerBalance < initialOwnerBalance).to.be.true; // Owner paid the fee
 
@@ -122,7 +115,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should revert if incorrect fee is provided", async function () {
-      const { presaleFactory, initialFee } = await loadFixture(deployFactory);
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n; // 1 hour from now
 
@@ -145,7 +137,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should return empty array for out of bounds page", async function () {
-      const { presaleFactory } = await loadFixture(deployFactory);
       const paginatedPresales = await presaleFactory.read.getPaginatedPresales([
         2n,
       ]);
@@ -153,10 +144,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should return multiple presales in paginated results", async function () {
-      const { presaleFactory, publicClient, initialFee } = await loadFixture(
-        deployFactory
-      );
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n; // 1 hour from now
 
@@ -186,7 +173,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should allow owner to set new presale creation fee", async function () {
-      const { presaleFactory, owner } = await loadFixture(deployFactory);
       const newFee = parseEther("0.02");
       await presaleFactory.write.setPresaleCreationFee([newFee], {
         account: owner.account,
@@ -195,7 +181,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should revert if non-owner tries to set new presale creation fee", async function () {
-      const { presaleFactory, otherAccount } = await loadFixture(deployFactory);
       const newFee = parseEther("0.02");
       await expect(
         presaleFactory.write.setPresaleCreationFee([newFee], {
@@ -205,9 +190,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should allow owner to withdraw fees from the factory", async function () {
-      const { presaleFactory, publicClient, initialFee, owner } =
-        await loadFixture(deployFactory);
-
       const currentTime = BigInt(Math.floor(Date.now() / 1000));
       const futureTime = currentTime + 3600n; // 1 hour from now
 
@@ -232,7 +214,7 @@ describe("PresaleFactory", function () {
         address: presaleFactory.address,
       });
       const initialOwnerBalance = await publicClient.getBalance({
-        address: owner.account.address,
+        address: owner.account!.address,
       });
 
       // Owner withdraws fees
@@ -245,7 +227,7 @@ describe("PresaleFactory", function () {
         address: presaleFactory.address,
       });
       const finalOwnerBalance = await publicClient.getBalance({
-        address: owner.account.address,
+        address: owner.account!.address,
       });
 
       expect(finalFactoryBalance).to.equal(0n); // Factory balance should be 0 after withdrawal
@@ -253,7 +235,6 @@ describe("PresaleFactory", function () {
     });
 
     it("Should revert if non-owner tries to withdraw fees", async function () {
-      const { presaleFactory, otherAccount } = await loadFixture(deployFactory);
       await expect(
         presaleFactory.write.withdrawFees({ account: otherAccount.account })
       ).to.be.rejectedWith("OwnableUnauthorizedAccount");
@@ -263,9 +244,6 @@ describe("PresaleFactory", function () {
   describe("Sales", function () {
     describe("Could buy tokens at presale", function () {
       it("Should buy tokens", async function () {
-        const { presaleFactory, publicClient, otherAccount, initialFee } =
-          await loadFixture(deployFactory);
-
         const latestBlock = await publicClient.getBlock();
         const startTime = latestBlock.timestamp + 1n;
         const futureTime = startTime + 3600n; // 1 hour from now
@@ -298,7 +276,7 @@ describe("PresaleFactory", function () {
           );
         const presaleAddress = presaleCreatedEvents[0].args.presale!;
 
-        const presale = await hre.viem.getContractAt(
+        const presale = await viem.getContractAt(
           "Presale",
           presaleAddress as `0x${string}`,
           {
@@ -316,10 +294,6 @@ describe("PresaleFactory", function () {
 
     describe("Events", function () {
       it("Should emit an event on new Presale creation", async function () {
-        const { presaleFactory, publicClient, initialFee } = await loadFixture(
-          deployFactory
-        );
-
         const currentTime = BigInt(Math.floor(Date.now() / 1000));
         const futureTime = currentTime + 3600n; // 1 hour from now
 

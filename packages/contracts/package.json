@@ -6,33 +6,30 @@
     "build": "hardhat compile && hardhat export-abi",
     "clean": "hardhat clean && hardhat clear-abi && rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "test": "hardhat test",
-    "deploy": "hardhat ignition deploy ignition/modules/PresaleFactory.ts --network"
+    "deploy": "hardhat ignition deploy ignition/modules/PresaleFactory.ts --network",
+    "verify": "ts-node scripts/verifyContracts.ts"
   },
   "files": [
     "abi_ts/"
   ],
   "devDependencies": {
-    "@nomicfoundation/hardhat-ignition": "^0.15.5",
-    "@nomicfoundation/hardhat-ignition-viem": "^0.15.5",
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.11",
-    "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
-    "@nomicfoundation/hardhat-verify": "^2.0.8",
-    "@nomicfoundation/hardhat-viem": "^2.0.3",
-    "@nomicfoundation/ignition-core": "^0.15.5",
+    "@nomicfoundation/hardhat-network-helpers": "^3.0.0",
+    "@nomicfoundation/hardhat-node-test-runner": "^3.0.3",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-verify": "^3.0.2",
+    "@nomicfoundation/hardhat-viem": "^3.0.0",
+    "@nomicfoundation/hardhat-viem-assertions": "^3.0.2",
     "@types/chai": "^4.3.16",
     "@types/chai-as-promised": "^7.1.8",
     "@types/mocha": "^10.0.7",
     "chai": "^4.4.1",
-    "hardhat": "^2.22.5",
-    "hardhat-abi-exporter": "^2.10.1",
-    "hardhat-gas-reporter": "^1.0.10",
-    "rimraf": "^6.0.1",
-    "solidity-coverage": "^0.8.12"
+    "hardhat": "^3.0.6",
+    "rimraf": "^6.0.1"
   },
   "dependencies": {
-    "@nomicfoundation/hardhat-viem": "^2.0.2",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "viem": "^2.17.8"
-  }
+  },
+  "type": "module"
 }

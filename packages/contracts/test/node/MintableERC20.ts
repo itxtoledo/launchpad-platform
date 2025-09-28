@@ -1,24 +1,37 @@
-import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import { beforeEach, describe, it } from "node:test";
 import { expect } from "chai";
+import { network } from "hardhat";
+import { GetContractReturnType, parseEther, WalletClient } from "viem";
 import hre from "hardhat";
-import { parseEther } from "viem";
+
+const { viem } = await hre.network.connect();
 
 describe("MintableERC20", function () {
-  async function deployToken() {
-    const [owner, otherAccount] = await hre.viem.getWalletClients();
+  let token: GetContractReturnType;
+  let owner: WalletClient;
+  let otherAccount: WalletClient;
+  let viem: any;
 
-    const presale = await hre.viem.deployContract("Presale");
-    const tokenImplementation = await hre.viem.deployContract("MintableERC20");
+  beforeEach(async function () {
+    const { viem: connectedViem } = await network.connect();
+    viem = connectedViem;
+
+    const [ownerClient, otherAccountClient] = await viem.getWalletClients();
+    owner = ownerClient;
+    otherAccount = otherAccountClient;
+
+    const presale = await viem.deployContract("Presale");
+    const tokenImplementation = await viem.deployContract("MintableERC20");
 
     const initialFee = parseEther("0.01");
 
-    const presaleFactory = await hre.viem.deployContract("PresaleFactory", [
+    const presaleFactory = await viem.deployContract("PresaleFactory", [
       presale.address,
       tokenImplementation.address,
       initialFee,
     ]);
 
-    const publicClient = await hre.viem.getPublicClient();
+    const publicClient = await viem.getPublicClient();
 
     const currentTime = BigInt(Math.floor(Date.now() / 1000));
     const futureTime = currentTime + 3600n;
@@ -42,41 +55,26 @@ describe("MintableERC20", function () {
     const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
     const presaleAddress = presaleEvents[0].args.presale;
 
-    const presaleContract = await hre.viem.getContractAt(
+    const presaleContract = await viem.getContractAt(
       "Presale",
       presaleAddress as `0x${string}`
     );
 
     const tokenAddress = await presaleContract.read.token();
-    const token = await hre.viem.getContractAt("MintableERC20", tokenAddress);
-
-    return {
-      token,
-      owner,
-      otherAccount,
-      presaleAddress: presaleAddress as `0x${string}`,
-    };
-  }
+    token = await viem.getContractAt("MintableERC20", tokenAddress);
+  });
 
   it("should be deployed with the correct name and symbol", async function () {
-    const { token } = await loadFixture(deployToken);
-
     expect(await token.read.name()).to.equal("Test Token");
     expect(await token.read.symbol()).to.equal("TST");
   });
 
   it("should mint initial supply to the deployer", async function () {
-    const { token, owner } = await loadFixture(deployToken);
-
     const balance = await token.read.balanceOf([owner.account.address]);
     expect(balance).to.equal(parseEther("1000"));
   });
 
   it("should allow minter to mint new tokens", async function () {
-    const { token, otherAccount, presaleAddress } = await loadFixture(
-      deployToken
-    );
-
     // Grant minter role to otherAccount for testing purposes
     await token.write.grantRole([
       await token.read.MINTER_ROLE(),
@@ -92,8 +90,6 @@ describe("MintableERC20", function () {
   });
 
   it("should not allow non-minter to mint new tokens", async function () {
-    const { token, otherAccount } = await loadFixture(deployToken);
-
     await expect(
       token.write.mint([otherAccount.account.address, parseEther("500")], {
         account: otherAccount.account,

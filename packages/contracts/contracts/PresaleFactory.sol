@@ -8,6 +8,18 @@ import "./MintableERC20.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+struct PresaleParams {
+    string name;
+    string symbol;
+    uint256 supply;
+    uint256 price;
+    uint256 hardCap;
+    uint256 softCap;
+    uint256 startTime;
+    uint256 endTime;
+    uint256 softCapPrice;
+}
+
 error IncorrectPresaleCreationFee(uint256 sent, uint256 required);
 
 contract PresaleFactory is Ownable {
@@ -21,8 +33,8 @@ contract PresaleFactory is Ownable {
 
     event PresaleCreated(address indexed presale);
 
-    constructor(address presale_, address token_, uint256 initialFee)
-        Ownable(msg.sender)
+    constructor(address presale_, address token_, uint256 initialFee, address ownerAddress)
+        Ownable(ownerAddress)
     {
         presale = Presale(presale_);
         token = MintableERC20(token_);
@@ -30,15 +42,7 @@ contract PresaleFactory is Ownable {
     }
 
     function createPresale(
-        string calldata name,
-        string calldata symbol,
-        uint256 supply,
-        uint256 price,
-        uint256 hardCap,
-        uint256 softCap,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 softCapPrice
+        PresaleParams calldata params
     ) external payable {
         if (msg.value != presaleCreationFee) revert IncorrectPresaleCreationFee(msg.value, presaleCreationFee);
         payable(address(this)).transfer(msg.value);
@@ -48,19 +52,19 @@ contract PresaleFactory is Ownable {
         MintableERC20(newToken).initialize({ 
             defaultAdmin_: msg.sender,
             minter_: newPresale,
-            name_: name,
-            symbol_: symbol,
-            initialSupply_: supply
+            name_: params.name,
+            symbol_: params.symbol,
+            initialSupply_: params.supply
         });
         Presale(newPresale).initialize({ 
             owner_: msg.sender,
             token_: newToken,
-            price_: price,
-            hardCap_: hardCap,
-            softCap_: softCap,
-            startTime_: startTime,
-            endTime_: endTime,
-            softCapPrice_: softCapPrice,
+            price_: params.price,
+            hardCap_: params.hardCap,
+            softCap_: params.softCap,
+            startTime_: params.startTime,
+            endTime_: params.endTime,
+            softCapPrice_: params.softCapPrice,
             factoryAddress_: address(this)
         });
 

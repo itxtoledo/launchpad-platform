@@ -1,40 +1,52 @@
+import hre from "hardhat";
+import { verifyContract } from "@nomicfoundation/hardhat-verify/verify";
 import { config } from "hardhat";
 import fs from "fs";
 import path from "path";
-import { glob } from "glob";
-import { execSync } from "child_process";
 
 async function main() {
-  // Obter o chain ID da linha de comando se fornecido
+  // Get the chain ID from command line if provided
   const desiredChainId = process.argv[2];
 
   console.log(
     desiredChainId
-      ? `Iniciando verificação de contratos para rede ${desiredChainId}...`
-      : "Iniciando verificação de contratos em todas as redes disponíveis..."
+      ? `Starting contract verification for network ${desiredChainId}...`
+      : "Starting contract verification on all available networks..."
   );
 
-  // Verificar se a configuração de networks está disponível
+  // Check if network configuration is available
   if (!config.networks) {
     throw new Error(
-      "Configuração de redes não encontrada no hardhat.config.ts"
+      "Network configuration not found in hardhat.config.ts"
     );
   }
 
-  // Encontrar todos os arquivos deployed_addresses.json em todas as pastas de deployment
-  const deploymentFiles = glob.sync(
-    path.resolve(
-      __dirname,
-      "../ignition/deployments/chain-*/deployed_addresses.json"
-    )
-  );
+  // Find all deployed_addresses.json files in all deployment folders
+  const deploymentsDir = path.resolve(__dirname, "../ignition/deployments");
+  let deploymentFiles: string[] = [];
+
+  if (fs.existsSync(deploymentsDir)) {
+    const chainDirs = fs
+      .readdirSync(deploymentsDir)
+      .filter(
+        (dir) =>
+          dir.startsWith("chain-") &&
+          fs.statSync(path.join(deploymentsDir, dir)).isDirectory()
+      );
+
+    deploymentFiles = chainDirs
+      .map((chainDir) =>
+        path.join(deploymentsDir, chainDir, "deployed_addresses.json")
+      )
+      .filter((filePath) => fs.existsSync(filePath));
+  }
 
   if (deploymentFiles.length === 0) {
-    throw new Error("Nenhum arquivo de deployment encontrado");
+    throw new Error("No deployment files found");
   }
 
   console.log(
-    `Encontrados ${deploymentFiles.length} deployments para verificar\n`
+    `Found ${deploymentFiles.length} deployments to verify\n`
   );
 
   // Filter deployments if a specific chainId is provided
@@ -44,108 +56,160 @@ async function main() {
 
   if (desiredChainId && filteredDeploymentFiles.length === 0) {
     throw new Error(
-      `Nenhum deployment encontrado para chainId ${desiredChainId}`
+      `No deployment found for chainId ${desiredChainId}`
     );
   }
 
-  // Para cada arquivo de deployment, executar a verificação
+  // For each deployment file, run the verification
   for (const deploymentPath of filteredDeploymentFiles) {
     try {
-      // Extrair o chain ID do caminho do arquivo
+      // Extract the chain ID from the file path
       const chainIdMatch = deploymentPath.match(/chain-(\d+)/);
       if (!chainIdMatch) {
         console.log(
-          `Não foi possível extrair o chain ID do caminho: ${deploymentPath}`
+          `Could not extract chain ID from path: ${deploymentPath}`
         );
         continue;
       }
 
       const chainId = chainIdMatch[1];
 
-      // Verificar se a rede está configurada no hardhat
+      // Check if the network is configured in hardhat
       if (!config.networks[chainId]) {
         console.log(
-          `⚠️ Configuração de rede não encontrada para ChainID: ${chainId}, pulando...`
+          `⚠️ Network configuration not found for ChainID: ${chainId}, skipping...`
         );
         continue;
       }
 
       console.log(`\n--------------------------------------------------`);
-      console.log(`Verificando tokens para chain ID: ${chainId}`);
+      console.log(`Verifying contracts for chain ID: ${chainId}`);
 
-      // Ler os dados do deployment
+      // Read deployment data
       const deploymentData = JSON.parse(
         fs.readFileSync(deploymentPath, "utf8")
       );
 
-      // Encontrar os endereços do StandardERC20 e MintableERC20
-      let standardErc20Address = null;
-      let mintableErc20Address = null;
+      // Get the list of all deployed contracts
+      const deployedContracts = Object.keys(deploymentData);
 
-      for (const key in deploymentData) {
-        if (key.includes("StandardERC20")) {
-          standardErc20Address = deploymentData[key];
-        }
-        if (key.includes("MintableERC20")) {
-          mintableErc20Address = deploymentData[key];
-        }
-      }
-
-      // Verificar se ambos os endereços foram encontrados
-      if (!standardErc20Address) {
+      if (deployedContracts.length === 0) {
         console.log(
-          `⚠️ StandardERC20 não encontrado para chain ID ${chainId}, pulando...`
-        );
-        continue;
-      }
-      if (!mintableErc20Address) {
-        console.log(
-          `⚠️ MintableERC20 não encontrado para chain ID ${chainId}, pulando...`
+          `⚠️ No contracts found for chain ID ${chainId}, skipping...`
         );
         continue;
       }
 
-      console.log(`► StandardERC20: ${standardErc20Address}`);
-      console.log(`► MintableERC20: ${mintableErc20Address}`);
-
-      // Verificar os contratos usando o comando direto do hardhat
-      console.log(`\nVerificando StandardERC20 na rede ${chainId}...`);
-      try {
-        execSync(
-          `npx hardhat verify --network ${chainId} ${standardErc20Address}`,
-          { stdio: "inherit" }
-        );
-        console.log(
-          `✅ StandardERC20 verificado com sucesso na rede ${chainId}`
-        );
-      } catch (error: any) {
-        console.log(`❌ Erro ao verificar StandardERC20: ${error.message}`);
+      console.log(`${deployedContracts.length} contract(s) found:`);
+      for (const contractName of deployedContracts) {
+        console.log(`► ${contractName}: ${deploymentData[contractName]}`);
       }
 
-      console.log(`\nVerificando MintableERC20 na rede ${chainId}...`);
-      try {
-        execSync(
-          `npx hardhat verify --network ${chainId} ${mintableErc20Address}`,
-          { stdio: "inherit" }
-        );
-        console.log(
-          `✅ MintableERC20 verificado com sucesso na rede ${chainId}`
-        );
-      } catch (error: any) {
-        console.log(`❌ Erro ao verificar MintableERC20: ${error.message}`);
+      // Load journal.jsonl to get constructor arguments
+      const journalPath = path.join(path.dirname(deploymentPath), "journal.jsonl");
+      let constructorArgs: Record<string, any[]> = {};
+      
+      if (fs.existsSync(journalPath)) {
+        const journalContent = fs.readFileSync(journalPath, "utf8");
+        const journalLines = journalContent.split('\n').filter(line => line.trim());
+        
+        for (const line of journalLines) {
+          try {
+            const journalEntry = JSON.parse(line);
+            // Look for contract initialization entries with constructor arguments
+            if (journalEntry.type === "DEPLOYMENT_EXECUTION_STATE_INITIALIZE" && 
+                journalEntry.constructorArgs !== undefined) {
+              // The futureId is the contract name in "ModuleName#ContractName" format
+              constructorArgs[journalEntry.futureId] = journalEntry.constructorArgs;
+            }
+          } catch (e) {
+            // Ignore lines that are not valid JSON
+          }
+        }
+      }
+
+      // Verify each deployed contract
+      for (const [contractName, contractAddress] of Object.entries(
+        deploymentData
+      )) {
+        if (!contractAddress) {
+          console.log(
+            `⚠️ Address not found for ${contractName}, skipping...`
+          );
+          continue;
+        }
+
+        console.log(`\nVerifying ${contractName} on network ${chainId}...`);
+        
+        try {
+          // Get constructor arguments for this contract, if they exist
+          let args: any[] = [];
+          
+          if (constructorArgs[contractName] && constructorArgs[contractName].length > 0) {
+            // Convert constructor arguments to the appropriate format
+            args = constructorArgs[contractName].map(arg => {
+              if (arg && typeof arg === 'object' && arg._kind === 'bigint') {
+                return arg.value;
+              }
+              return arg;
+            });
+            
+            console.log(`  Using constructor arguments: ${JSON.stringify(args)}`);
+          }
+          
+          // Execute contract verification using the new verifyContract function
+          await verifyContract(
+            {
+              address: contractAddress as string,
+              constructorArgs: args,
+              // Determine provider based on network configuration
+              provider: determineProviderForNetwork(chainId),
+            },
+            hre,
+          );
+          
+          console.log(
+            `✅ ${contractName} verified successfully on network ${chainId}`
+          );
+        } catch (error: any) {
+          console.log(`❌ Error verifying ${contractName}: ${error.message}`);
+        }
       }
     } catch (error: any) {
-      console.error(`Erro ao processar o arquivo ${deploymentPath}:`, error);
+      console.error(`Error processing file ${deploymentPath}:`, error);
     }
   }
 
   console.log("\n--------------------------------------------------");
-  console.log("Processo de verificação concluído para todas as redes!");
+  console.log("Verification process completed for all networks!");
+}
+
+/**
+ * Determines the provider for a given network based on common network configurations
+ */
+function determineProviderForNetwork(chainId: string): "etherscan" | "blockscout" | undefined {
+  // Common chain IDs and their respective providers
+  const chainProviders: Record<string, "etherscan" | "blockscout"> = {
+    "1": "etherscan",      // Ethereum Mainnet
+    "5": "etherscan",      // Goerli Testnet
+    "11155111": "etherscan", // Sepolia Testnet
+    "97": "etherscan",     // BSC Testnet
+    "56": "etherscan",     // BSC Mainnet
+    "137": "etherscan",    // Polygon Mainnet
+    "80001": "etherscan",  // Polygon Mumbai Testnet
+    "42161": "etherscan",  // Arbitrum Mainnet
+    "421613": "etherscan", // Arbitrum Goerli Testnet
+    "10": "etherscan",     // Optimism Mainnet
+    "420": "etherscan",    // Optimism Goerli Testnet
+    // Add more chain providers as needed
+  };
+
+  return chainProviders[chainId];
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 main().catch((error) => {
-  console.error("Erro fatal:", error);
+  console.error("Fatal error:", error);
   process.exitCode = 1;
 });

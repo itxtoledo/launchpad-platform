@@ -23,6 +23,16 @@ export const presaleSchema = z.object({
   noTimeLimit: z.boolean().optional(),
   hasSoftCap: z.boolean().optional(), // Added hasSoftCap
 }).superRefine((data, ctx) => {
+  // If noTimeLimit is false, then endTime is required
+  if (!data.noTimeLimit && !data.endTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "End Time is required unless 'No time limit' is selected.",
+      path: ["endTime"],
+    });
+  }
+  
+  // If Soft Cap is enabled, noTimeLimit must be false and endTime must be provided
   if (data.hasSoftCap && data.noTimeLimit) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -30,13 +40,15 @@ export const presaleSchema = z.object({
       path: ["noTimeLimit"],
     });
   }
-  if (data.hasSoftCap && !data.noTimeLimit && !data.endTime) {
+  
+  if (data.hasSoftCap && !data.endTime) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "If Soft Cap is enabled and no time limit is set, End Time is required.",
+      message: "When Soft Cap is enabled, End Time is required.",
       path: ["endTime"],
     });
   }
+  
   if (data.hasSoftCap && Number(data.softCapPrice) < Number(data.price)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

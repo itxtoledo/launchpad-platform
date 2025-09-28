@@ -5,7 +5,8 @@ import { useNativeCurrency } from "@/hooks";
 import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { format } from "date-fns";
+import { CountdownTimer } from "./CountdownTimer";
+import { Badge } from "./ui/badge";
 
 interface PresaleCardProps {
   presaleAddress: `0x${string}`;
@@ -13,35 +14,31 @@ interface PresaleCardProps {
 
 export function PresaleCard({ presaleAddress }: PresaleCardProps) {
   const {
-    useTokenAddress,
-    useTokenName,
-    useTokenSymbol,
-    useTotalContributed,
-    useHardCap,
-    useStartTime,
-    useEndTime,
+    tokenName,
+    tokenSymbol,
+    totalContributed,
+    hardCap,
+    startTime,
+    endTime,
+    softCap,
+    softCapReached,
   } = usePresale(presaleAddress);
 
-  const { data: tokenAddress } = useTokenAddress();
-  const { data: tokenName, isLoading: isLoadingName } = useTokenName(tokenAddress!);
-  const { data: tokenSymbol, isLoading: isLoadingSymbol } = useTokenSymbol(tokenAddress!);
-  const { data: totalContributed, isLoading: isLoadingContributed } =
-    useTotalContributed();
-  const { data: hardCap, isLoading: isLoadingHardCap } = useHardCap();
-  const { data: startTime, isLoading: isLoadingStartTime } = useStartTime();
-  const { data: endTime, isLoading: isLoadingEndTime } = useEndTime();
-
   const nativeCurrencySymbol = useNativeCurrency();
+  const currentTime = Date.now() / 1000; // Current time in seconds
 
-  const isLoading =
-    isLoadingName ||
-    isLoadingSymbol ||
-    isLoadingContributed ||
-    isLoadingHardCap ||
-    isLoadingStartTime ||
-    isLoadingEndTime;
+  const isLoading = 
+    tokenName.isLoading ||
+    tokenSymbol.isLoading ||
+    totalContributed.isLoading ||
+    hardCap.isLoading ||
+    startTime.isLoading ||
+    endTime.isLoading ||
+    softCap.isLoading ||
+    softCapReached.isLoading;
 
-  const progress = hardCap ? (Number(totalContributed) / Number(hardCap)) * 100 : 0;
+  const progress = hardCap.data && Number(hardCap.data) > 0 ? (Number(totalContributed.data || 0) / Number(hardCap.data)) * 100 : 0;
+  const softCapProgress = softCap.data && Number(softCap.data) > 0 ? (Number(totalContributed.data || 0) / Number(softCap.data)) * 100 : 0;
 
   if (isLoading) {
     return (
@@ -57,40 +54,78 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
     );
   }
 
+  // Convert bigints to numbers for time calculations
+  const startTimeNum = Number(startTime.data);
+  const endTimeNum = Number(endTime.data);
+
+  // Determine presale status
+  const hasStarted = startTime.data !== undefined && currentTime >= startTimeNum;
+  const hasEnded = endTime.data !== undefined && currentTime >= endTimeNum && endTimeNum !== 0;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>
-          {tokenName} ({tokenSymbol})
+          {tokenName.data} ({tokenSymbol.data})
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div>
-          <p>Progress</p>
-          <Progress value={progress} className="w-full" />
-          <div className="flex justify-between">
+        {/* Raised Amount */}
+        <div className="mb-4">
+          <div className="flex justify-between text-sm mb-1">
+            <span>Raised</span>
             <span>
-              {totalContributed ? Number(totalContributed) / 1e18 : 0} {nativeCurrencySymbol}
+              {totalContributed.data !== undefined ? (Number(totalContributed.data) / 1e18).toFixed(4) : "0.0000"} {nativeCurrencySymbol}
             </span>
+          </div>
+          <Progress value={progress} className="w-full" />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>
-              {hardCap ? Number(hardCap) / 1e18 : 0} {nativeCurrencySymbol}
+              {totalContributed.data !== undefined ? (Number(totalContributed.data) / 1e18).toFixed(4) : "0.0000"} / {hardCap.data !== undefined ? (Number(hardCap.data) / 1e18).toFixed(4) : "0.0000"} {nativeCurrencySymbol}
             </span>
           </div>
         </div>
-        <div className="mt-4">
-          <p>
-            Start:{" "}
-            {startTime
-              ? format(new Date(Number(startTime) * 1000), "PPpp")
-              : "..."}
-          </p>
-          <p>
-            End:{" "}
-            {endTime ? format(new Date(Number(endTime) * 1000), "PPpp") : "..."}
-          </p>
+
+        {/* Soft Cap Status */}
+        {softCap.data !== undefined && Number(softCap.data) > 0 && (
+          <div className="mb-3">
+            <div className="flex justify-between text-sm mb-1">
+              <span>Soft Cap</span>
+              <Badge variant={softCapReached.data ? "default" : "secondary"}>
+                {softCapReached.data ? "Achieved" : "Not Reached"}
+              </Badge>
+            </div>
+            <Progress value={softCapProgress} className="w-full" />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>
+                {totalContributed.data !== undefined ? (Number(totalContributed.data) / 1e18).toFixed(4) : "0.0000"} / {softCap.data !== undefined ? (Number(softCap.data) / 1e18).toFixed(4) : "0.0000"} {nativeCurrencySymbol}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Status and Countdown */}
+        <div className="mb-4">
+          {!hasStarted ? (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Starts in:</span>
+              <CountdownTimer targetDate={new Date(Number(startTime.data) * 1000)} />
+            </div>
+          ) : hasEnded ? (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status:</span>
+              <Badge variant="destructive">Ended</Badge>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status:</span>
+              <Badge variant="default">Active</Badge>
+            </div>
+          )}
         </div>
+
         <Link to={`/presale-details/${presaleAddress}`}>
-          <Button className="mt-4 w-full">View Details</Button>
+          <Button className="w-full">View Details</Button>
         </Link>
       </CardContent>
     </Card>

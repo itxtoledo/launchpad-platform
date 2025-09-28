@@ -14,6 +14,9 @@ error NoTokensToClaim();
 error PresaleStillActive();
 error SoftCapAlreadyReached();
 error InvalidSoftCapPrice();
+error SoftCapRequiresTimeLimit();
+error PresaleFailedNoRefund();
+error PresaleFailed(); // New error for when presale has failed but user tries to claim tokens
 
 error NoContributionToRefund();
 
@@ -30,6 +33,10 @@ contract Presale is OwnableUpgradeable {
 
     uint256 public totalContributed;
     bool public softCapReached;
+
+    function presaleFailed() public view returns (bool) {
+        return hasSoftCap() && !softCapReached && block.timestamp > endTime;
+    }
 
     mapping(address => uint256) public tokenContributions;
     mapping(address => uint256) public ethContributions;
@@ -64,6 +71,9 @@ contract Presale is OwnableUpgradeable {
             if (softCapPrice_ < price_) {
                 revert InvalidSoftCapPrice();
             }
+            if (endTime_ == 0) {
+                revert SoftCapRequiresTimeLimit();
+            }
         }
 
         factoryAddress = factoryAddress_;
@@ -78,14 +88,18 @@ contract Presale is OwnableUpgradeable {
 
     function contribute(uint256 amount) external payable {
         if (block.timestamp < startTime) revert PresaleNotStarted();
-        if (endTime != 0 && block.timestamp > endTime) revert PresaleEnded();
 
-        uint256 currentPrice = price;
-        if (softCapReached) {
-            currentPrice = softCapPrice;
+        // If presale failed (time is up and softcap not reached), don't allow contributions
+        if (presaleFailed()) {
+            revert PresaleFailedNoRefund();
         }
 
-        uint256 total = amount * currentPrice;
+        // Check if we're past the end time (but not yet failed, meaning soft cap was reached)
+        if (endTime != 0 && block.timestamp > endTime) {
+            revert PresaleEnded();
+        }
+
+        uint256 total = amount * currentPrice();
 
         if (total != msg.value) revert InvalidEtherSent(msg.value, total);
 
@@ -104,7 +118,8 @@ contract Presale is OwnableUpgradeable {
     }
 
     function claimTokens() external {
-        if (softCap > 0 && !softCapReached) revert SoftCapNotReached();
+        if (presaleFailed()) revert PresaleFailed(); // If presale failed, tokens can't be claimed
+        if (hasSoftCap() && !softCapReached) revert SoftCapNotReached();
         uint256 amountToClaim = tokenContributions[msg.sender];
         if (amountToClaim == 0) revert NoTokensToClaim();
 
@@ -115,19 +130,39 @@ contract Presale is OwnableUpgradeable {
     }
 
     function refund() external {
-        if (block.timestamp <= endTime) revert PresaleStillActive();
-        if (softCapReached) revert SoftCapAlreadyReached();
         uint256 refundAmount = ethContributions[msg.sender];
         if (refundAmount == 0) revert NoContributionToRefund();
 
-        ethContributions[msg.sender] = 0;
-        payable(msg.sender).transfer(refundAmount);
+        // Allow refund if presale has failed (time is up and softcap not reached)
+        if (presaleFailed()) {
+            ethContributions[msg.sender] = 0;
+            payable(msg.sender).transfer(refundAmount);
 
-        emit EthRefunded(msg.sender, refundAmount);
+            emit EthRefunded(msg.sender, refundAmount);
+            return;
+        }
+
+        // For presales without time limits, allow refund only if softcap not reached
+        if (endTime == 0 && !softCapReached) {
+            ethContributions[msg.sender] = 0;
+            payable(msg.sender).transfer(refundAmount);
+
+            emit EthRefunded(msg.sender, refundAmount);
+            return;
+        }
+
+        // If soft cap was reached, revert with SoftCapAlreadyReached
+        if (softCapReached) {
+            revert SoftCapAlreadyReached();
+        } else {
+            // If presale is still active, revert with PresaleStillActive
+            revert PresaleStillActive();
+        }
     }
 
     function withdrawETH() external onlyOwner {
-        if (softCap > 0 && !softCapReached) revert SoftCapNotReached();
+        if (presaleFailed()) revert SoftCapNotReached(); // If presale failed, owner can't withdraw
+        if (hasSoftCap() && !softCapReached) revert SoftCapNotReached();
         uint256 balance = address(this).balance;
         uint256 fee = balance / 100; // 1% fee
         uint256 amountToOwner = balance - fee;
@@ -144,5 +179,19 @@ contract Presale is OwnableUpgradeable {
         MintableERC20(token_).transfer(owner(), token.balanceOf(address(this)));
 
         emit TokenWithdrawn(owner(), token.balanceOf(address(this)));
+    }
+
+    /**
+     * @dev Returns true if the presale has a soft cap set.
+     */
+    function hasSoftCap() public view returns (bool) {
+        return softCap > 0;
+    }
+
+    function currentPrice() public view returns (uint256) {
+        if (softCapReached) {
+            return softCapPrice;
+        }
+        return price;
     }
 }
