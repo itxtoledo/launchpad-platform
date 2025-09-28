@@ -1,10 +1,10 @@
 import { beforeEach, describe, it } from "node:test";
-import { expect } from "chai";
+import assert from "node:assert/strict";
 import hre from "hardhat";
-import { parseEther, PublicClient, WalletClient } from "viem";
-import { ContractReturnType } from "@nomicfoundation/hardhat-viem/types";
-const { viem, networkHelpers } = await hre.network.connect();
+import { parseEther, type PublicClient, type WalletClient } from "viem";
+import { type ContractReturnType } from "@nomicfoundation/hardhat-viem/types";
 
+const { viem, networkHelpers } = await hre.network.connect();
 const time = networkHelpers.time;
 
 describe("PresaleFactory", function () {
@@ -44,22 +44,19 @@ describe("PresaleFactory", function () {
       const expectedPresaleAddress = presale.address.toLowerCase();
       const expectedTokenAddress = token.address.toLowerCase();
 
-      expect(factoryPresaleAddress.toLowerCase()).to.equal(
-        expectedPresaleAddress
-      );
-      expect(factoryTokenAddress.toLowerCase()).to.equal(expectedTokenAddress);
+      assert.equal(factoryPresaleAddress.toLowerCase(), expectedPresaleAddress);
+      assert.equal(factoryTokenAddress.toLowerCase(), expectedTokenAddress);
     });
 
     it("should initialize with the correct owner", async function () {
-      expect((await presaleFactory.read.owner()).toLowerCase()).to.equal(
+      assert.equal(
+        (await presaleFactory.read.owner()).toLowerCase(),
         owner.account!.address.toLowerCase()
       );
     });
 
     it("should initialize with the correct presale creation fee", async function () {
-      expect(await presaleFactory.read.presaleCreationFee()).to.equal(
-        initialFee
-      );
+      assert.equal(await presaleFactory.read.presaleCreationFee(), initialFee);
     });
   });
 
@@ -96,22 +93,22 @@ describe("PresaleFactory", function () {
       const finalOwnerBalance = await publicClient.getBalance({
         address: owner.account!.address,
       });
-      expect(finalOwnerBalance < initialOwnerBalance).to.be.true; // Owner paid the fee
+      assert.ok(finalOwnerBalance < initialOwnerBalance); // Owner paid the fee
 
       const finalFactoryBalance = await publicClient.getBalance({
         address: presaleFactory.address,
       });
-      expect(finalFactoryBalance).to.equal(initialFactoryBalance + initialFee); // Fee should be transferred to the factory
+      assert.equal(finalFactoryBalance, initialFactoryBalance + initialFee); // Fee should be transferred to the factory
 
       const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-      expect(presaleEvents).to.have.lengthOf(1);
+      assert.equal(presaleEvents.length, 1);
       const createdPresaleAddress = presaleEvents[0].args.presale;
 
       const paginatedPresales = await presaleFactory.read.getPaginatedPresales([
         1n,
       ]);
-      expect(paginatedPresales).to.have.lengthOf(1);
-      expect(paginatedPresales[0]).to.equal(createdPresaleAddress);
+      assert.equal(paginatedPresales.length, 1);
+      assert.equal(paginatedPresales[0], createdPresaleAddress);
     });
 
     it("Should revert if incorrect fee is provided", async function () {
@@ -120,17 +117,19 @@ describe("PresaleFactory", function () {
 
       await viem.assertions.revertWithCustomErrorWithArgs(
         presaleFactory.write.createPresale(
-          [{
-            name: "Example",
-            symbol: "EXM",
-            supply: 1000n,
-            price: parseEther("0.01"),
-            hardCap: parseEther("10"), // hardCap
-            softCap: parseEther("5"), // softCap
-            startTime: currentTime, // startTime
-            endTime: futureTime, // endTime
-            softCapPrice: parseEther("0.01"), // softCapPrice
-          }],
+          [
+            {
+              name: "Example",
+              symbol: "EXM",
+              supply: 1000n,
+              price: parseEther("0.01"),
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: currentTime, // startTime
+              endTime: futureTime, // endTime
+              softCapPrice: parseEther("0.01"), // softCapPrice
+            },
+          ],
           { value: initialFee - 1n } // Incorrect fee
         ),
         presaleFactory,
@@ -143,7 +142,7 @@ describe("PresaleFactory", function () {
       const paginatedPresales = await presaleFactory.read.getPaginatedPresales([
         2n,
       ]);
-      expect(paginatedPresales).to.have.lengthOf(0);
+      assert.equal(paginatedPresales.length, 0);
     });
 
     it("Should return multiple presales in paginated results", async function () {
@@ -152,27 +151,29 @@ describe("PresaleFactory", function () {
 
       for (let i = 0; i < 12n; i++) {
         const hash = await presaleFactory.write.createPresale(
-          [{
-            name: `Example${i}`,
-            symbol: `EXM${i}`,
-            supply: 1000n,
-            price: parseEther("0.01"),
-            hardCap: parseEther("10"), // hardCap
-            softCap: parseEther("5"), // softCap
-            startTime: currentTime, // startTime
-            endTime: futureTime, // endTime
-            softCapPrice: parseEther("0.01"), // softCapPrice
-          }],
+          [
+            {
+              name: `Example${i}`,
+              symbol: `EXM${i}`,
+              supply: 1000n,
+              price: parseEther("0.01"),
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: currentTime, // startTime
+              endTime: futureTime, // endTime
+              softCapPrice: parseEther("0.01"), // softCapPrice
+            },
+          ],
           { value: initialFee } // Pass the fee
         );
         await publicClient.waitForTransactionReceipt({ hash });
       }
 
       const page1 = await presaleFactory.read.getPaginatedPresales([1n]);
-      expect(page1).to.have.lengthOf(10);
+      assert.equal(page1.length, 10);
 
       const page2 = await presaleFactory.read.getPaginatedPresales([2n]);
-      expect(page2).to.have.lengthOf(2);
+      assert.equal(page2.length, 2);
     });
 
     it("Should allow owner to set new presale creation fee", async function () {
@@ -180,7 +181,7 @@ describe("PresaleFactory", function () {
       await presaleFactory.write.setPresaleCreationFee([newFee], {
         account: owner.account,
       });
-      expect(await presaleFactory.read.presaleCreationFee()).to.equal(newFee);
+      assert.equal(await presaleFactory.read.presaleCreationFee(), newFee);
     });
 
     it("Should revert if non-owner tries to set new presale creation fee", async function () {
@@ -200,17 +201,19 @@ describe("PresaleFactory", function () {
 
       // Create a presale to deposit fees into the factory
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("0.01"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("0.01"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("0.01"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("0.01"), // softCapPrice
+          },
+        ],
         { value: initialFee } // Pass the fee
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -235,8 +238,8 @@ describe("PresaleFactory", function () {
         address: owner.account!.address,
       });
 
-      expect(finalFactoryBalance).to.equal(0n); // Factory balance should be 0 after withdrawal
-      expect(finalOwnerBalance > initialOwnerBalance).to.be.true; // Owner's balance should increase
+      assert.equal(finalFactoryBalance, 0n); // Factory balance should be 0 after withdrawal
+      assert.ok(finalOwnerBalance > initialOwnerBalance); // Owner's balance should increase
     });
 
     it("Should revert if non-owner tries to withdraw fees", async function () {
@@ -256,17 +259,19 @@ describe("PresaleFactory", function () {
         const futureTime = startTime + 3600n; // 1 hour from now
 
         const hash = await presaleFactory.write.createPresale(
-          [{
-            name: "Example",
-            symbol: "EXM",
-            supply: 1000n,
-            price: parseEther("1"),
-            hardCap: parseEther("10"), // hardCap
-            softCap: parseEther("5"), // softCap
-            startTime: startTime, // startTime
-            endTime: futureTime, // endTime
-            softCapPrice: parseEther("1"), // softCapPrice
-          }],
+          [
+            {
+              name: "Example",
+              symbol: "EXM",
+              supply: 1000n,
+              price: parseEther("1"),
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: startTime, // startTime
+              endTime: futureTime, // endTime
+              softCapPrice: parseEther("1"), // softCapPrice
+            },
+          ],
           { value: initialFee } // Pass the fee
         );
 
@@ -285,10 +290,7 @@ describe("PresaleFactory", function () {
 
         const presale = await viem.getContractAt(
           "Presale",
-          presaleAddress as `0x${string}`,
-          {
-            client: { wallet: otherAccount },
-          }
+          presaleAddress as `0x${string}`
         );
 
         const AMOUNT_TO_BUY = 6n;
@@ -305,25 +307,27 @@ describe("PresaleFactory", function () {
         const futureTime = currentTime + 3600n; // 1 hour from now
 
         const hash = await presaleFactory.write.createPresale(
-          [{
-            name: "Example",
-            symbol: "EXM",
-            supply: 1000n,
-            price: 1n,
-            hardCap: parseEther("10"), // hardCap
-            softCap: parseEther("5"), // softCap
-            startTime: currentTime, // startTime
-            endTime: futureTime, // endTime
-            softCapPrice: 1n, // softCapPrice
-          }],
+          [
+            {
+              name: "Example",
+              symbol: "EXM",
+              supply: 1000n,
+              price: 1n,
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: currentTime, // startTime
+              endTime: futureTime, // endTime
+              softCapPrice: 1n, // softCapPrice
+            },
+          ],
           { value: initialFee } // Pass the fee
         );
         await publicClient.waitForTransactionReceipt({ hash });
 
         // get the PresaleCreated events in the latest block
         const presaleEvents = await presaleFactory.getEvents.PresaleCreated();
-        expect(presaleEvents).to.have.lengthOf(1);
-        expect(presaleEvents[0].args.presale).to.be.an("string");
+        assert.equal(presaleEvents.length, 1);
+        assert.equal(typeof presaleEvents[0].args.presale, "string");
       });
     });
   });

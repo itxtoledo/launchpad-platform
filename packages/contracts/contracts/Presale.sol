@@ -16,7 +16,7 @@ error SoftCapAlreadyReached();
 error InvalidSoftCapPrice();
 error SoftCapRequiresTimeLimit();
 error PresaleFailedNoRefund();
-error PresaleFailed(); // New error for when presale has failed but user tries to claim tokens
+error PresaleFailed();
 
 error NoContributionToRefund();
 

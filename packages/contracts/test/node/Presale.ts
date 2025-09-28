@@ -1,30 +1,18 @@
 import { beforeEach, describe, it } from "node:test";
-import { expect } from "chai";
-import { network } from "hardhat";
-import {
-  GetContractReturnType,
-  parseEther,
-  PublicClient,
-  WalletClient,
-} from "viem";
+import assert from "node:assert/strict";
+import { parseEther, type PublicClient, type WalletClient } from "viem";
 import hre from "hardhat";
+import { type ContractReturnType } from "@nomicfoundation/hardhat-viem/types";
 
-const { viem } = await hre.network.connect();
+const { viem, networkHelpers } = await hre.network.connect();
 
 describe("Presale", function () {
-  let presaleFactory: GetContractReturnType;
+  let presaleFactory: ContractReturnType<"PresaleFactory">;
   let owner: WalletClient;
   let otherAccount: WalletClient;
   let publicClient: PublicClient;
-  let viem: any;
-  let networkHelpers: any;
 
   beforeEach(async function () {
-    const { viem: connectedViem, networkHelpers: connectedNetworkHelpers } =
-      await network.connect();
-    viem = connectedViem;
-    networkHelpers = connectedNetworkHelpers;
-
     const presale = await viem.deployContract("Presale");
     const token = await viem.deployContract("MintableERC20");
     const [ownerClient, otherAccountClient] = await viem.getWalletClients();
@@ -37,7 +25,7 @@ describe("Presale", function () {
       presale.address,
       token.address,
       initialFee,
-      owner.account.address,
+      owner.account!.address,
     ]);
 
     publicClient = await viem.getPublicClient();
@@ -49,17 +37,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("0.01"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("0.01"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("0.01"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("0.01"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -69,10 +59,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([1n], { value: parseEther("0.01") });
@@ -89,17 +76,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("0.01"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("0.01"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("0.01"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("0.01"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -109,10 +98,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await viem.assertions.revertWithCustomError(
@@ -127,17 +113,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -147,16 +135,13 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([5n], { value: parseEther("5") });
 
       const softCapReached = await presale.read.softCapReached();
-      expect(softCapReached).to.be.true;
+      assert.strictEqual(softCapReached, true);
     });
 
     it("Should allow token claim after soft cap is reached", async function () {
@@ -164,17 +149,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -184,10 +171,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([6n], { value: parseEther("6") });
@@ -200,10 +184,10 @@ describe("Presale", function () {
 
       await presale.write.claimTokens();
       const balance = await clonedToken.read.balanceOf([
-        otherAccount.account.address,
+        otherAccount.account!.address,
       ]);
       const expectedBalance = 6n * 10n ** 18n; // 6 tokens with 18 decimals
-      expect(balance).to.equal(expectedBalance);
+      assert.equal(balance, expectedBalance);
     });
 
     it("Should allow owner to withdraw ETH after soft cap is reached", async function () {
@@ -211,17 +195,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -231,24 +217,18 @@ describe("Presale", function () {
 
       const presaleForOther = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presaleForOther.write.contribute([6n], { value: parseEther("6") });
 
       const presaleForOwner = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: owner },
-        }
+        presaleAddress as `0x${string}`
       );
 
       const initialOwnerBalance = await publicClient.getBalance({
-        address: owner.account.address,
+        address: owner.account!.address,
       });
       const tx = await presaleForOwner.write.withdrawETH();
       const receipt = await publicClient.waitForTransactionReceipt({
@@ -256,10 +236,10 @@ describe("Presale", function () {
       });
       const gasUsed = receipt.gasUsed * receipt.effectiveGasPrice;
       const finalOwnerBalance = await publicClient.getBalance({
-        address: owner.account.address,
+        address: owner.account!.address,
       });
 
-      expect(finalOwnerBalance > initialOwnerBalance - gasUsed).to.be.true;
+      assert.ok(finalOwnerBalance > initialOwnerBalance - gasUsed);
     });
 
     it("Should allow user to get a refund if soft cap is not reached and presale ended", async function () {
@@ -267,17 +247,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 10n; // very short presale
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime,
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime,
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -287,10 +269,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([1n], { value: parseEther("1") });
@@ -299,7 +278,7 @@ describe("Presale", function () {
       await networkHelpers.time.increaseTo(futureTime + 1n);
 
       const initialBalance = await publicClient.getBalance({
-        address: otherAccount.account.address,
+        address: otherAccount.account!.address,
       });
       const tx = await presale.write.refund();
       const receipt = await publicClient.waitForTransactionReceipt({
@@ -307,14 +286,14 @@ describe("Presale", function () {
       });
       const gasUsed = receipt.gasUsed * receipt.effectiveGasPrice;
       const finalBalance = await publicClient.getBalance({
-        address: otherAccount.account.address,
+        address: otherAccount.account!.address,
       });
 
       const expectedBalance = initialBalance - gasUsed + parseEther("1");
-      expect(
+      assert.ok(
         finalBalance >= expectedBalance - parseEther("0.001") &&
           finalBalance <= expectedBalance + parseEther("0.001")
-      ).to.be.true;
+      );
     });
 
     it("Should not allow refund if soft cap is reached", async function () {
@@ -322,17 +301,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime,
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime,
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -342,10 +323,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([6n], { value: parseEther("6") });
@@ -364,17 +342,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -384,10 +364,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([1n], { value: parseEther("1") });
@@ -406,17 +383,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 10n; // very short presale
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime,
-          softCapPrice: parseEther("1"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime,
+            softCapPrice: parseEther("1"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
       await publicClient.waitForTransactionReceipt({ hash });
@@ -426,10 +405,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       await presale.write.contribute([1n], { value: parseEther("1") });
@@ -439,7 +415,7 @@ describe("Presale", function () {
 
       // Check that presaleFailed() returns true
       const presaleFailed = await presale.read.presaleFailed();
-      expect(presaleFailed).to.be.true;
+      assert.strictEqual(presaleFailed, true);
 
       // Try to claim tokens - should revert with PresaleFailed error
       await viem.assertions.revertWithCustomError(
@@ -455,17 +431,19 @@ describe("Presale", function () {
 
       await viem.assertions.revertWithCustomError(
         presaleFactory.write.createPresale(
-          [{
-            name: "Example",
-            symbol: "EXM",
-            supply: 1000n,
-            price: parseEther("1"),
-            hardCap: parseEther("10"), // hardCap
-            softCap: parseEther("5"), // softCap
-            startTime: currentTime, // startTime
-            endTime: futureTime, // endTime
-            softCapPrice: 0n, // softCapPrice
-          }],
+          [
+            {
+              name: "Example",
+              symbol: "EXM",
+              supply: 1000n,
+              price: parseEther("1"),
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: currentTime, // startTime
+              endTime: futureTime, // endTime
+              softCapPrice: 0n, // softCapPrice
+            },
+          ],
           { value: parseEther("0.01") }
         ),
         presaleFactory,
@@ -479,17 +457,19 @@ describe("Presale", function () {
 
       await viem.assertions.revertWithCustomError(
         presaleFactory.write.createPresale(
-          [{
-            name: "Example",
-            symbol: "EXM",
-            supply: 1000n,
-            price: parseEther("1"),
-            hardCap: parseEther("10"), // hardCap
-            softCap: parseEther("5"), // softCap
-            startTime: currentTime, // startTime
-            endTime: futureTime, // endTime
-            softCapPrice: parseEther("0.5"), // softCapPrice
-          }],
+          [
+            {
+              name: "Example",
+              symbol: "EXM",
+              supply: 1000n,
+              price: parseEther("1"),
+              hardCap: parseEther("10"), // hardCap
+              softCap: parseEther("5"), // softCap
+              startTime: currentTime, // startTime
+              endTime: futureTime, // endTime
+              softCapPrice: parseEther("0.5"), // softCapPrice
+            },
+          ],
           { value: parseEther("0.01") }
         ),
         presaleFactory,
@@ -502,17 +482,19 @@ describe("Presale", function () {
       const futureTime = currentTime + 3600n;
 
       const hash = await presaleFactory.write.createPresale(
-        [{
-          name: "Example",
-          symbol: "EXM",
-          supply: 1000n,
-          price: parseEther("1"),
-          hardCap: parseEther("10"), // hardCap
-          softCap: parseEther("5"), // softCap
-          startTime: currentTime, // startTime
-          endTime: futureTime, // endTime
-          softCapPrice: parseEther("2"), // softCapPrice
-        }],
+        [
+          {
+            name: "Example",
+            symbol: "EXM",
+            supply: 1000n,
+            price: parseEther("1"),
+            hardCap: parseEther("10"), // hardCap
+            softCap: parseEther("5"), // softCap
+            startTime: currentTime, // startTime
+            endTime: futureTime, // endTime
+            softCapPrice: parseEther("2"), // softCapPrice
+          },
+        ],
         { value: parseEther("0.01") }
       );
 
@@ -523,10 +505,7 @@ describe("Presale", function () {
 
       const presale = await viem.getContractAt(
         "Presale",
-        presaleAddress as `0x${string}`,
-        {
-          client: { wallet: otherAccount },
-        }
+        presaleAddress as `0x${string}`
       );
 
       // Contribute to reach soft cap
@@ -536,11 +515,11 @@ describe("Presale", function () {
       await presale.write.contribute([1n], { value: parseEther("2") });
 
       const tokenContributions = await presale.read.tokenContributions([
-        otherAccount.account.address,
+        otherAccount.account!.address,
       ]);
 
       const expectedTokenContributions = 6n * 10n ** 18n; // 5 tokens at price 1 + 1 token at price 2
-      expect(tokenContributions).to.equal(expectedTokenContributions);
+      assert.equal(tokenContributions, expectedTokenContributions);
     });
   });
 });
