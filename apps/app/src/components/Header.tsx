@@ -21,7 +21,7 @@ export default function Header() {
         {/* Navigation for Medium and Larger Screens */}
         <nav className="hidden md:flex items-center gap-8">
           <Link
-            to="/presales"
+            to="/"
             className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-orange-800 dark:hover:text-orange-500 transition duration-150"
           >
             All Presales

@@ -96,7 +96,7 @@ export function usePresaleFactory() {
     });
   };
 
-  // Read functions for paginated presales
+  // Read functions for paginated presales - this was returning empty due to page 0
   const {
     data: paginatedPresales,
     isLoading: isLoadingPaginatedPresales,
@@ -105,7 +105,7 @@ export function usePresaleFactory() {
     address: contractAddress,
     abi: PresaleFactoryABI,
     functionName: "getPaginatedPresalesDecreasingByCreation",
-    args: [BigInt(0), BigInt(10)], // Default values, can be overridden or passed as arguments to the hook
+    args: [BigInt(1), BigInt(10)], // Fixed: Use page 1 instead of 0 to avoid empty results
     query: {
       enabled: !!contractAddress,
     },
@@ -147,7 +147,7 @@ export function usePresaleFactory() {
     isLoadingPresaleFee,
     refetchPresaleFee,
 
-    // Paginated Presales
+    // Paginated Presales - removed this from general hook
     paginatedPresales: paginatedPresales as `0x${string}`[] | undefined,
     isLoadingPaginatedPresales,
     isErrorPaginatedPresales,

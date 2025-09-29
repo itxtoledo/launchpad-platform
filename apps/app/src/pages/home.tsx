@@ -4,42 +4,18 @@ import { useState } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { useReadContract } from "wagmi";
 import { type Address } from "viem";
-
-import presaleFactoryAbi from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
 import { FaucetButton } from "../components/FaucetButton";
 import { PresaleCard } from "@/components/PresaleCard";
+import { usePaginatedPresales } from "@/hooks";
 
 export default function Home() {
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc"); // "desc" for decreasing by creation, "asc" for increasing by creation
-
-  // Use separate hooks for each function to properly type them
-  const { 
-    data: presalesAsc, 
-    isLoading: isLoadingAsc 
-  } = useReadContract({
-    address: import.meta.env.VITE_PRESALE_FACTORY,
-    abi: presaleFactoryAbi,
-    functionName: "getPaginatedPresales",
-    args: [BigInt(page)],
-  }) as { data: Address[] | undefined; isLoading: boolean };
   
-  const { 
-    data: presalesDesc, 
-    isLoading: isLoadingDesc 
-  } = useReadContract({
-    address: import.meta.env.VITE_PRESALE_FACTORY,
-    abi: presaleFactoryAbi,
-    functionName: "getPaginatedPresalesDecreasingByCreation",
-    args: [BigInt(page), BigInt(10)],
-  }) as { data: Address[] | undefined; isLoading: boolean };
+  const { presales, isLoading, isError } = usePaginatedPresales(page, 10, sortOrder);
 
-  const presaleAddresses = sortOrder === "desc" ? presalesDesc : presalesAsc;
-  const isLoadingPresaleAddresses = sortOrder === "desc" ? isLoadingDesc : isLoadingAsc;
-
-  const isLoading = isLoadingPresaleAddresses;
+  const presaleAddresses = presales;
 
   return (
     <div className="container mx-auto my-8">
@@ -77,6 +53,10 @@ export default function Home() {
             </Card>
           ))}
         </div>
+      ) : isError ? (
+        <div className="text-center">
+          <p className="text-red-500">Error loading presales. Please try again later.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {presaleAddresses && presaleAddresses.length > 0 ? (
@@ -97,7 +77,7 @@ export default function Home() {
         </Button>
         <Button
           onClick={() => setPage((prev) => prev + 1)}
-          disabled={presaleAddresses && presaleAddresses.length < 10}
+          disabled={presaleAddresses ? presaleAddresses.length < 10 : true}
         >
           Next Page
         </Button>

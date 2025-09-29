@@ -5,6 +5,8 @@ import hardhatViemAssertions from "@nomicfoundation/hardhat-viem-assertions";
 import HardhatNodeTestRunner from "@nomicfoundation/hardhat-node-test-runner";
 import hardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import hardhatAbiExporter from "@solidstate/hardhat-abi-exporter";
+import HardhatIgnitionViem from "@nomicfoundation/hardhat-ignition-viem";
+import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import {
   bsc,
   bscTestnet,
@@ -40,6 +42,7 @@ const networks: HardhatUserConfig["networks"] = {};
 
 for (const chain of desiredChains) {
   networks[chain.id.toString()] = {
+    chainType: "l1",
     url: chain.rpcUrls.default.http[0],
     accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
     chainId: chain.id,
@@ -49,12 +52,14 @@ for (const chain of desiredChains) {
 
 const config: HardhatUserConfig = {
   plugins: [
+    HardhatKeystore,
     hardhatVerify,
     HardhatNodeTestRunner,
     hardhatViem,
     hardhatViemAssertions,
     hardhatNetworkHelpers,
     hardhatAbiExporter,
+    HardhatIgnitionViem,
   ],
   paths: {
     tests: {
@@ -71,11 +76,11 @@ const config: HardhatUserConfig = {
     },
   },
   abiExporter: [
-    {
-      path: "./abi",
-      format: "json",
-      runOnCompile: true,
-    },
+    // {
+    //   path: "./abi",
+    //   format: "json",
+    //   runOnCompile: true,
+    // },
     {
       path: "./abi_ts",
       format: "typescript",
@@ -89,7 +94,7 @@ const config: HardhatUserConfig = {
       apiKey: configVariable("ETHERSCAN_API_KEY"),
     },
     blockscout: {
-      enabled: true,
+      enabled: false,
     },
   },
 };

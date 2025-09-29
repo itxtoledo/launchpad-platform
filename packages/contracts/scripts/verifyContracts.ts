@@ -1,12 +1,37 @@
 import hre from "hardhat";
-import { verifyContract } from "@nomicfoundation/hardhat-verify/verify";
 import { config } from "hardhat";
 import fs from "fs";
 import path from "path";
+import { exec } from "child_process";
+
+async function verifyContract(
+  chainId: number | string,
+  address: string,
+  params: (string | number)[] = []
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const args = params.map((p) => `"${p}"`).join(" ");
+    const cmd = `npx hardhat verify --network ${chainId} ${address} ${args}`;
+
+    console.info("Calling verify with this command:", cmd);
+
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`Execution failed: ${error.message}`));
+        return;
+      }
+      if (stderr && !stdout) {
+        reject(new Error(`stderr: ${stderr}`));
+        return;
+      }
+      resolve(stdout.trim());
+    });
+  });
+}
 
 async function main() {
   // Get the chain ID from command line if provided
-  const desiredChainId = process.argv[2];
+  const desiredChainId = process.argv[4];
 
   console.log(
     desiredChainId
@@ -16,13 +41,14 @@ async function main() {
 
   // Check if network configuration is available
   if (!config.networks) {
-    throw new Error(
-      "Network configuration not found in hardhat.config.ts"
-    );
+    throw new Error("Network configuration not found in hardhat.config.ts");
   }
 
   // Find all deployed_addresses.json files in all deployment folders
-  const deploymentsDir = path.resolve(__dirname, "../ignition/deployments");
+  const deploymentsDir = path.resolve("./ignition/deployments");
+
+  console.log("Deployment directory:", deploymentsDir);
+
   let deploymentFiles: string[] = [];
 
   if (fs.existsSync(deploymentsDir)) {
@@ -45,9 +71,7 @@ async function main() {
     throw new Error("No deployment files found");
   }
 
-  console.log(
-    `Found ${deploymentFiles.length} deployments to verify\n`
-  );
+  console.log(`Found ${deploymentFiles.length} deployments to verify\n`);
 
   // Filter deployments if a specific chainId is provided
   const filteredDeploymentFiles = desiredChainId
@@ -55,9 +79,7 @@ async function main() {
     : deploymentFiles;
 
   if (desiredChainId && filteredDeploymentFiles.length === 0) {
-    throw new Error(
-      `No deployment found for chainId ${desiredChainId}`
-    );
+    throw new Error(`No deployment found for chainId ${desiredChainId}`);
   }
 
   // For each deployment file, run the verification
@@ -66,9 +88,7 @@ async function main() {
       // Extract the chain ID from the file path
       const chainIdMatch = deploymentPath.match(/chain-(\d+)/);
       if (!chainIdMatch) {
-        console.log(
-          `Could not extract chain ID from path: ${deploymentPath}`
-        );
+        console.log(`Could not extract chain ID from path: ${deploymentPath}`);
         continue;
       }
 
@@ -106,21 +126,29 @@ async function main() {
       }
 
       // Load journal.jsonl to get constructor arguments
-      const journalPath = path.join(path.dirname(deploymentPath), "journal.jsonl");
+      const journalPath = path.join(
+        path.dirname(deploymentPath),
+        "journal.jsonl"
+      );
       let constructorArgs: Record<string, any[]> = {};
-      
+
       if (fs.existsSync(journalPath)) {
         const journalContent = fs.readFileSync(journalPath, "utf8");
-        const journalLines = journalContent.split('\n').filter(line => line.trim());
-        
+        const journalLines = journalContent
+          .split("\n")
+          .filter((line) => line.trim());
+
         for (const line of journalLines) {
           try {
             const journalEntry = JSON.parse(line);
             // Look for contract initialization entries with constructor arguments
-            if (journalEntry.type === "DEPLOYMENT_EXECUTION_STATE_INITIALIZE" && 
-                journalEntry.constructorArgs !== undefined) {
+            if (
+              journalEntry.type === "DEPLOYMENT_EXECUTION_STATE_INITIALIZE" &&
+              journalEntry.constructorArgs !== undefined
+            ) {
               // The futureId is the contract name in "ModuleName#ContractName" format
-              constructorArgs[journalEntry.futureId] = journalEntry.constructorArgs;
+              constructorArgs[journalEntry.futureId] =
+                journalEntry.constructorArgs;
             }
           } catch (e) {
             // Ignore lines that are not valid JSON
@@ -132,42 +160,41 @@ async function main() {
       for (const [contractName, contractAddress] of Object.entries(
         deploymentData
       )) {
+        if (contractName !== "PresaleFactoryModule#PresaleFactory") {
+          continue;
+        }
+
         if (!contractAddress) {
-          console.log(
-            `⚠️ Address not found for ${contractName}, skipping...`
-          );
+          console.log(`⚠️ Address not found for ${contractName}, skipping...`);
           continue;
         }
 
         console.log(`\nVerifying ${contractName} on network ${chainId}...`);
-        
+
         try {
           // Get constructor arguments for this contract, if they exist
           let args: any[] = [];
-          
-          if (constructorArgs[contractName] && constructorArgs[contractName].length > 0) {
+
+          if (
+            constructorArgs[contractName] &&
+            constructorArgs[contractName].length > 0
+          ) {
             // Convert constructor arguments to the appropriate format
-            args = constructorArgs[contractName].map(arg => {
-              if (arg && typeof arg === 'object' && arg._kind === 'bigint') {
+            args = constructorArgs[contractName].map((arg) => {
+              if (arg && typeof arg === "object" && arg._kind === "bigint") {
                 return arg.value;
               }
               return arg;
             });
-            
-            console.log(`  Using constructor arguments: ${JSON.stringify(args)}`);
+
+            console.log(
+              `  Using constructor arguments: ${JSON.stringify(args)}`
+            );
           }
-          
+
           // Execute contract verification using the new verifyContract function
-          await verifyContract(
-            {
-              address: contractAddress as string,
-              constructorArgs: args,
-              // Determine provider based on network configuration
-              provider: determineProviderForNetwork(chainId),
-            },
-            hre,
-          );
-          
+          await verifyContract(chainId, contractAddress as string, args);
+
           console.log(
             `✅ ${contractName} verified successfully on network ${chainId}`
           );
@@ -182,29 +209,6 @@ async function main() {
 
   console.log("\n--------------------------------------------------");
   console.log("Verification process completed for all networks!");
-}
-
-/**
- * Determines the provider for a given network based on common network configurations
- */
-function determineProviderForNetwork(chainId: string): "etherscan" | "blockscout" | undefined {
-  // Common chain IDs and their respective providers
-  const chainProviders: Record<string, "etherscan" | "blockscout"> = {
-    "1": "etherscan",      // Ethereum Mainnet
-    "5": "etherscan",      // Goerli Testnet
-    "11155111": "etherscan", // Sepolia Testnet
-    "97": "etherscan",     // BSC Testnet
-    "56": "etherscan",     // BSC Mainnet
-    "137": "etherscan",    // Polygon Mainnet
-    "80001": "etherscan",  // Polygon Mumbai Testnet
-    "42161": "etherscan",  // Arbitrum Mainnet
-    "421613": "etherscan", // Arbitrum Goerli Testnet
-    "10": "etherscan",     // Optimism Mainnet
-    "420": "etherscan",    // Optimism Goerli Testnet
-    // Add more chain providers as needed
-  };
-
-  return chainProviders[chainId];
 }
 
 // We recommend this pattern to be able to use async/await everywhere

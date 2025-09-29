@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { FaucetButton } from "@/components/FaucetButton";
+import { CountdownTimer } from "@/components/CountdownTimer";
 
 import { useState, useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
@@ -210,6 +211,7 @@ export default function PresaleDetails() {
   const tokenDecimals = multicallQuery.data?.[4].result ?? 18n;
 
   const currentTime = BigInt(Math.floor(Date.now() / 1000));
+  const hasStarted = currentTime >= startTime;
   const hasEnded = currentTime > endTime;
   const softCapNotReached = softCap > 0n && totalContributed < softCap;
   const showRefundButton = hasEnded && softCapNotReached;
@@ -275,7 +277,7 @@ export default function PresaleDetails() {
                   Get in early on the {multicallQuery.data[0].result} presale.
                 </CardDescription>
               </div>
-              <FaucetButton />
+              {hasStarted && !hasEnded && <FaucetButton />}
             </div>
           </CardHeader>
           <CardContent className="grid gap-12 lg:grid-cols-2 lg:gap-24">
@@ -372,9 +374,9 @@ export default function PresaleDetails() {
                         abi: presaleAbi,
                         functionName: "withdrawETH",
                       })}
-                      disabled={isPending}
+                      disabled={isPending || !hasStarted}
                     >
-                      Withdraw ETH
+                      {(!hasStarted) ? "Presale Not Started" : (isPending ? "Confirming..." : "Withdraw ETH")}
                     </Button>
                     <Button
                       onClick={() => writeContract({
@@ -383,9 +385,9 @@ export default function PresaleDetails() {
                         functionName: "withdrawToken",
                         args: [readTokenAddress.data as Address],
                       })}
-                      disabled={isPending}
+                      disabled={isPending || !hasStarted}
                     >
-                      Withdraw Tokens
+                      {(!hasStarted) ? "Presale Not Started" : (isPending ? "Confirming..." : "Withdraw Tokens")}
                     </Button>
                   </div>
                 </div>
@@ -417,6 +419,18 @@ export default function PresaleDetails() {
                       Alert: {(error as BaseError).shortMessage || error.message}
                     </div>
                   )}
+                </div>
+              ) : !hasStarted ? (
+                // Show countdown timer when presale hasn't started yet
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold">Presale Not Started</h2>
+                  <p className="text-muted-foreground">
+                    This presale has not started yet. Please wait until the presale starts.
+                  </p>
+                  <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                    <div className="text-sm font-medium text-muted-foreground">Starts in:</div>
+                    <CountdownTimer targetDate={new Date(Number(startTime) * 1000)} />
+                  </div>
                 </div>
               ) : (
                 <>

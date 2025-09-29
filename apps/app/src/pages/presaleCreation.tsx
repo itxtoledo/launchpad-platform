@@ -23,14 +23,12 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
-
 // importing necessary wagmi for contracts integrations
 import { useWaitForTransactionReceipt, type BaseError } from "wagmi";
-
+import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
 // importing our custom hook and ABI
 import { usePresaleFactory } from "@/hooks/usePresaleFactory";
 import { useNativeCurrency } from "@/hooks";
-import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
 import { parseEther, parseEventLogs, formatEther } from "viem";
 import {
   formatNumberWithThousands,
@@ -217,6 +215,7 @@ export default function PresaleCreation() {
             softCapPrice: softCapPriceInETH,
           },
         ],
+        value: presaleCreationFee as bigint,
       });
     }
   }
@@ -231,22 +230,16 @@ export default function PresaleCreation() {
 
   useEffect(() => {
     if (isConfirmed && receipt) {
-      // Import the ABI locally for parsing logs
-      import(
-        "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory"
-      ).then((module) => {
-        const abi = module.default;
-        const parsedLogs = parseEventLogs({
-          abi,
-          logs: receipt.logs,
-          eventName: "PresaleCreated",
-        });
-
-        // Extract the new presale address from the logs
-        const newPresaleAddress = parsedLogs[0].args.presale;
-        // Redirect to the PresaleDetails page with the new address
-        navigate({ to: `/presale-details/${newPresaleAddress}` });
+      const parsedLogs = parseEventLogs({
+        abi: PresaleFactoryABI,
+        logs: receipt.logs,
+        eventName: "PresaleCreated",
       });
+
+      // Extract the new presale address from the logs
+      const newPresaleAddress = parsedLogs[0].args.presale;
+      // Redirect to the PresaleDetails page with the new address
+      navigate({ to: `/presale-details/${newPresaleAddress}` });
     }
   }, [isConfirmed, receipt, navigate]);
 
