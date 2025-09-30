@@ -17,13 +17,7 @@ export function usePresaleFactory() {
     : undefined;
 
   // Write contract functions
-  const {
-    data: createPresaleData,
-    writeContract: createPresale,
-    isPending: isCreatePresalePending,
-    isError: isCreatePresaleError,
-    error: createPresaleError,
-  } = useWriteContract();
+  const { writeContractAsync: createPresale } = useWriteContract();
 
   // Write contract functions for factory owner operations
   const {
@@ -159,10 +153,6 @@ export function usePresaleFactory() {
 
     // Write functions
     createPresale,
-    createPresaleData,
-    isCreatePresalePending,
-    isCreatePresaleError,
-    createPresaleError,
 
     // Owner-specific write functions
     withdrawFees,
