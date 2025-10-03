@@ -35,6 +35,7 @@ import {
 } from "@/lib/utils";
 import { FaucetButton } from "@/components/FaucetButton";
 import { TransactionModal } from "@/components/TransactionModal";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 // Component to handle supply field with formatting
 function SupplyField({
@@ -95,11 +96,13 @@ export default function PresaleCreation() {
 
   // State for modal and transaction status
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<
     "idle" | "signing" | "sending" | "confirming" | "confirmed" | "error"
   >("idle");
   const [presaleAddress, setPresaleAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [currentFormData, setCurrentFormData] = useState<PresaleFormData | null>(null);
 
   const form = useForm<PresaleFormData>({
     resolver: zodResolver(presaleSchema),
@@ -127,14 +130,15 @@ export default function PresaleCreation() {
   }
 
   // Format the presale creation fee for display
-  const formatFee = (fee: bigint | undefined) => {
-    if (!fee) return "0";
+  const formatFee = (fee: bigint | undefined | unknown) => {
+    if (!fee || typeof fee !== 'bigint') return "0";
     return parseFloat(formatEther(fee)).toString();
   };
 
-  async function onSubmit(values: PresaleFormData) {
+  // Function to handle form submission after confirmation
+  const handleConfirmedSubmit = async (values: PresaleFormData) => {
     try {
-      // Set the transaction status to "signing" and open the modal
+      // Set the transaction status to "signing" and open the transaction modal
       setTransactionStatus("signing");
       setIsModalOpen(true);
 
@@ -257,8 +261,14 @@ export default function PresaleCreation() {
       });
 
       if (parsedLogs.length > 0) {
-        const newPresaleAddress = parsedLogs[0].args.presale;
-        setPresaleAddress(newPresaleAddress as Address);
+        // Access the presale address from the event args - properly handle the unknown type
+        const event = parsedLogs[0];
+        if (event && 'args' in event && event.args && typeof event.args === 'object' && 'presale' in event.args) {
+          const presaleAddress = (event.args as { presale?: Address }).presale;
+          if (presaleAddress) {
+            setPresaleAddress(presaleAddress);
+          }
+        }
       }
     } catch (err) {
       console.error("Error creating presale:", err);
@@ -269,6 +279,19 @@ export default function PresaleCreation() {
       );
       setTransactionStatus("error");
     }
+  };
+
+  // Function to handle form submission - shows confirmation modal instead of immediate transaction
+  async function onSubmit(values: PresaleFormData) {
+    // Ensure the values conform to the expected format for the confirmation modal
+    const normalizedValues: PresaleFormData = {
+      ...values,
+      endTime: values.endTime || undefined,
+      noTimeLimit: values.noTimeLimit || false,
+      hasSoftCap: values.hasSoftCap || false
+    };
+    setCurrentFormData(normalizedValues);
+    setIsConfirmationModalOpen(true);
   }
 
   const handleNavigateToPresale = () => {
@@ -318,7 +341,12 @@ export default function PresaleCreation() {
                   <FormItem>
                     <FormLabel>Token Symbol</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your token symbol" {...field} />
+                      <Input 
+                        placeholder="Enter your token symbol" 
+                        className="uppercase"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      />
                     </FormControl>
                     <FormDescription>
                       The symbol of the token (e.g., &quot;MAT&quot;). This is a
@@ -579,6 +607,22 @@ export default function PresaleCreation() {
         </CardContent>
       </Card>
 
+      {/* Confirmation modal */}
+      {currentFormData && (
+        <ConfirmationModal
+          isOpen={isConfirmationModalOpen}
+          onClose={() => setIsConfirmationModalOpen(false)}
+          onConfirm={() => {
+            if (currentFormData) {
+              handleConfirmedSubmit(currentFormData);
+              setIsConfirmationModalOpen(false);
+            }
+          }}
+          formData={currentFormData as unknown as PresaleFormData}
+          fee={formatFee(presaleCreationFee)}
+        />
+      )}
+      
       {/* Transaction modal */}
       <TransactionModal
         isOpen={isModalOpen}
