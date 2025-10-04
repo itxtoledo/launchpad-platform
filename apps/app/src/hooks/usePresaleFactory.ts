@@ -4,17 +4,14 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { contracts } from "../config/contracts";
 import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
 import { useMemo } from "react";
 
 export function usePresaleFactory() {
-  const { chainId, address } = useAccount();
+  const { address } = useAccount();
 
   // Get the contract address based on chainId
-  const contractAddress = chainId
-    ? (contracts[chainId as keyof typeof contracts] as `0x${string}`)
-    : undefined;
+  const contractAddress = import.meta.env.VITE_PRESALE_FACTORY;
 
   // Write contract functions
   const { writeContractAsync: createPresale } = useWriteContract();

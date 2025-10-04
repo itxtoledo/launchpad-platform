@@ -7,7 +7,9 @@
     "clean": "hardhat clean && hardhat clear-abi && rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "test": "hardhat test",
     "deploy": "hardhat ignition deploy ignition/modules/PresaleFactory.ts --network",
-    "verify": "hardhat run scripts/verifyContracts.ts"
+    "verify": "hardhat run scripts/verifyContracts.ts",
+    "start-node": "hardhat node",
+    "deploy:viem": "./deploy-viem-only.sh"
   },
   "files": [
     "abi_ts/"

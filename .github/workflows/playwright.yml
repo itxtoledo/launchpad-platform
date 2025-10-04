@@ -1,0 +1,44 @@
+name: Playwright Tests
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    - name: Install dependencies
+      run: npm install -g pnpm && pnpm install
+    - name: Install wait-for-it
+      run: |
+        wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
+        chmod +x wait-for-it.sh
+    - name: Start Hardhat Network
+      run: |
+        cd packages/contracts
+        npx hardhat node > hardhat-output.log 2>&1 &
+        # Wait for the Hardhat node to be ready using wait-for-it
+        cd ../..
+        ./wait-for-it.sh localhost:8545 -t 60
+        echo "Hardhat network started and ready"
+    - name: Run deploy script  
+      run: |
+        # Run the deploy script, which connects to localhost
+        chmod +x ./deploy-viem-only.sh
+        ./deploy-viem-only.sh
+    - name: Install Playwright Browsers
+      run: pnpm exec playwright install --with-deps
+    - name: Run Playwright tests
+      run: cd apps/app && pnpm exec playwright test
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: playwright-report
+        path: apps/app/playwright-report/
+        retention-days: 30

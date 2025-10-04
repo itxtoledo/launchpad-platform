@@ -178,8 +178,9 @@ describe("Presale with Soft Cap", function () {
 
   describe("Soft Cap Failure Scenario", function () {
     it("Should allow refunds when endTime is reached without meeting softCap", async function () {
-      // Create a new presale with a time window that should work with the current blockchain state
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
+      // Get the latest timestamp from the blockchain
+      const latestBlock = await publicClient.getBlock();
+      const currentTime = latestBlock.timestamp;
       // Create a presale with a reasonable duration so we can test failure
       const endTime = currentTime + 60n; // 60 seconds in the future
 
@@ -246,7 +247,9 @@ describe("Presale with Soft Cap", function () {
     });
 
     it("Should fail presale if endTime is reached without reaching softCap", async function () {
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
+      // Get the latest timestamp from the blockchain
+      const latestBlock = await publicClient.getBlock();
+      const currentTime = latestBlock.timestamp;
       const endTime = currentTime + 60n; // 60 seconds in the future
 
       const hash = await presaleFactory.write.createPresale(
@@ -296,7 +299,9 @@ describe("Presale with Soft Cap", function () {
     });
 
     it("Should not allow claiming tokens when presale has failed", async function () {
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
+      // Get the latest timestamp from the blockchain
+      const latestBlock = await publicClient.getBlock();
+      const currentTime = latestBlock.timestamp;
       const endTime = currentTime + 60n; // 60 seconds in the future
 
       const hash = await presaleFactory.write.createPresale(
@@ -353,7 +358,9 @@ describe("Presale with Soft Cap", function () {
     });
 
     it("Should not allow contributions when presale has failed", async function () {
-      const currentTime = BigInt(Math.floor(Date.now() / 1000));
+      // Get the latest timestamp from the blockchain
+      const latestBlock = await publicClient.getBlock();
+      const currentTime = latestBlock.timestamp;
       const endTime = currentTime + 60n; // 60 seconds in the future
 
       const hash = await presaleFactory.write.createPresale(

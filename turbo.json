@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -14,10 +15,26 @@
       "persistent": true
     },
     "test": {
-      "dependsOn": ["build"]
+      "dependsOn": ["^test", "build"],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": true
     },
-    "lint": {
-      "outputs": []
+    "contracts:start-node": {
+      "persistent": true,
+      "cache": false
+    },
+    "contracts:deploy-local": {
+      "dependsOn": ["contracts:start-node"],
+      "cache": false
+    },
+    "app:dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["contracts:deploy-local"],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
     }
   }
 }

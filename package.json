@@ -8,6 +8,7 @@
     "build": "turbo run build",
     "dev": "turbo dev",
     "test": "turbo run test",
+    "test:e2e": "turbo run contracts:deploy-local && pnpm --filter app run test:e2e",
     "start": "turbo run dev",
     "lint": "turbo run lint"
   },
