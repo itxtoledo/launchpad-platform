@@ -9,6 +9,7 @@
     "deploy": "hardhat ignition deploy ignition/modules/PresaleFactory.ts --network",
     "verify": "hardhat run scripts/verifyContracts.ts",
     "start-node": "hardhat node",
+    "deploy-local": "hardhat ignition deploy ignition/modules/PresaleFactory.ts --network localhost",
     "deploy:viem": "./deploy-viem-only.sh"
   },
   "files": [

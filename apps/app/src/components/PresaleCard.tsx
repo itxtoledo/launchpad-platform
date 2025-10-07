@@ -108,18 +108,18 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
         <div className="mb-4">
           {!hasStarted ? (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Starts in:</span>
-              <CountdownTimer targetDate={new Date(Number(startTime.data) * 1000)} />
+                <span className="text-sm text-muted-foreground">Starts in:</span>
+                <CountdownTimer targetDate={new Date(Number(startTime.data) * 1000)} />
             </div>
           ) : hasEnded ? (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Status:</span>
-              <Badge variant="destructive">Ended</Badge>
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <Badge variant="destructive">Ended</Badge>
             </div>
           ) : (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Status:</span>
-              <Badge variant="default">Active</Badge>
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <Badge variant="success">Active</Badge>
             </div>
           )}
         </div>

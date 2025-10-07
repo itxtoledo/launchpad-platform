@@ -92,7 +92,6 @@ export default function PresaleDetails() {
         ...presaleContract,
         functionName: "softCap", // Added softCap
       },
-
       {
         ...presaleContract,
         functionName: "startTime",
@@ -104,6 +103,18 @@ export default function PresaleDetails() {
       {
         ...presaleContract,
         functionName: "totalContributed",
+      },
+      {
+        ...presaleContract,
+        functionName: "presaleFailed",
+      },
+      {
+        ...presaleContract,
+        functionName: "softCapReached",
+      },
+      {
+        ...presaleContract,
+        functionName: "hasSoftCap",
       },
     ],
     query: {
@@ -206,6 +217,9 @@ export default function PresaleDetails() {
   const startTime = multicallQuery.data?.[7].result ?? 0n;
   const endTime = multicallQuery.data?.[8].result ?? 0n;
   const totalContributed = multicallQuery.data?.[9].result ?? 0n;
+  const presaleFailedStatus = multicallQuery.data?.[10].result ?? false;
+  const softCapReached = multicallQuery.data?.[11].result ?? false;
+  const hasSoftCap = multicallQuery.data?.[12].result ?? false;
   const tokenPrice = multicallQuery.data?.[3].result ?? 0n;
   const tokenSymbol = multicallQuery.data?.[1].result ?? "";
   const tokenDecimals = multicallQuery.data?.[4].result ?? 18n;
@@ -213,8 +227,9 @@ export default function PresaleDetails() {
   const currentTime = BigInt(Math.floor(Date.now() / 1000));
   const hasStarted = currentTime >= startTime;
   const hasEnded = currentTime > endTime;
-  const softCapNotReached = softCap > 0n && totalContributed < softCap;
-  const showRefundButton = hasEnded && softCapNotReached;
+  const isPresaleSuccessful = hasEnded && softCapReached;
+  const showRefundButton = presaleFailedStatus;
+  const showClaimTokensButton = isPresaleSuccessful && !showRefundButton;
 
   const progressValue =
     hardCap > 0 ? Number((totalContributed * 100n) / hardCap) : 0;
@@ -394,32 +409,71 @@ export default function PresaleDetails() {
               )}
             </div>
             <div className="space-y-6">
-              {showRefundButton ? (
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold">Presale Ended</h2>
-                  <p className="text-muted-foreground">
-                    The presale has ended and the soft cap was not reached. You can now withdraw your contributed funds.
-                  </p>
-                  <Button
-                    onClick={() => writeContract({
-                      address: address as Address,
-                      abi: presaleAbi,
-                      functionName: "refund",
-                    })}
-                    disabled={isPending}
-                    className="w-full"
-                  >
-                    {isPending ? "Confirming Refund..." : "Refund"}
-                  </Button>
-                  {hash && <div>Transaction Hash: {hash}</div>}
-                  {isConfirming && <div>Waiting for confirmation...</div>}
-                  {isConfirmed && <div>Transaction confirmed.</div>}
-                  {error && (
-                    <div>
-                      Alert: {(error as BaseError).shortMessage || error.message}
-                    </div>
-                  )}
-                </div>
+              {hasEnded ? (
+                // Presale has ended - show different UI based on success/failure
+                showRefundButton ? (
+                  // Presale failed - show refund button
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold">Presale Failed</h2>
+                    <p className="text-muted-foreground">
+                      The presale has ended and the soft cap was not reached. You can now withdraw your contributed funds.
+                    </p>
+                    <Button
+                      onClick={() => writeContract({
+                        address: address as Address,
+                        abi: presaleAbi,
+                        functionName: "refund",
+                      })}
+                      disabled={isPending}
+                      className="w-full"
+                    >
+                      {isPending ? "Confirming Refund..." : "Refund Funds"}
+                    </Button>
+                    {hash && <div>Transaction Hash: {hash}</div>}
+                    {isConfirming && <div>Waiting for confirmation...</div>}
+                    {isConfirmed && <div>Transaction confirmed.</div>}
+                    {error && (
+                      <div>
+                        Alert: {(error as BaseError).shortMessage || error.message}
+                      </div>
+                    )}
+                  </div>
+                ) : showClaimTokensButton ? (
+                  // Presale was successful - show claim tokens button
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold">Presale Successful</h2>
+                    <p className="text-muted-foreground">
+                      Congratulations! The presale has ended successfully. You can now claim your tokens.
+                    </p>
+                    <Button
+                      onClick={() => writeContract({
+                        address: address as Address,
+                        abi: presaleAbi,
+                        functionName: "claimTokens",
+                      })}
+                      disabled={isPending}
+                      className="w-full"
+                    >
+                      {isPending ? "Confirming Claim..." : "Claim Tokens"}
+                    </Button>
+                    {hash && <div>Transaction Hash: {hash}</div>}
+                    {isConfirming && <div>Waiting for confirmation...</div>}
+                    {isConfirmed && <div>Transaction confirmed.</div>}
+                    {error && (
+                      <div>
+                        Alert: {(error as BaseError).shortMessage || error.message}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // General ended state (this shouldn't happen if logic is correct)
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold">Presale Ended</h2>
+                    <p className="text-muted-foreground">
+                      The presale has ended. Check back later for more information.
+                    </p>
+                  </div>
+                )
               ) : !hasStarted ? (
                 // Show countdown timer when presale hasn't started yet
                 <div className="space-y-2">
@@ -433,6 +487,7 @@ export default function PresaleDetails() {
                   </div>
                 </div>
               ) : (
+                // Active presale - show buying inputs
                 <>
                   <div className="space-y-2">
                     <h2 className="text-2xl font-bold">Contribute</h2>

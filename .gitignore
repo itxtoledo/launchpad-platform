@@ -36,3 +36,6 @@ pnpm-debug.log*
 
 # pnpm
 pnpm-lock.yaml
+apps/app/downloads
+apps/app/.cache-synpress
+apps/app/cypress
