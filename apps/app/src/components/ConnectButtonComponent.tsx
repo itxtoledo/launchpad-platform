@@ -40,6 +40,7 @@ export const ConnectButtonComponent = () => {
                     onClick={openConnectModal}
                     type="button"
                     variant="default"
+                    data-testid="connect-wallet-button"
                   >
                     Connect Wallet
                   </Button>

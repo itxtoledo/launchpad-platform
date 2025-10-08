@@ -2,8 +2,7 @@ import { useReadContract } from "wagmi";
 import PresaleABI from "@launchpad-platform/contracts/abi_ts/contracts/Presale.sol/Presale";
 import MintableERC20ABI from "@launchpad-platform/contracts/abi_ts/contracts/MintableERC20.sol/MintableERC20";
 
-// npx hardhat verify --network 97 0x739f1bF01e8a6e0f8F0Ab3953aBe24B815faD0FD "0xDF423c4D82626F57B04bAc63cDCBc4EaDb97E4Db" "0x8119aE7F1c8ecb910d6D6eec01B6508ad8F8FFF4" "1000000000000000" "0xc4b3272222E7635488cD5524a8fdA01BA7970568"
-// TODO use multicall
+// Comprehensive hook for all presale-related contract reads
 export function usePresale(presaleAddress: `0x${string}`) {
   // Direct reactive reads for presale contract
   const tokenAddress = useReadContract({
@@ -78,6 +77,33 @@ export function usePresale(presaleAddress: `0x${string}`) {
     },
   });
 
+  const presaleOwner = useReadContract({
+    address: presaleAddress,
+    abi: PresaleABI,
+    functionName: "owner",
+    query: {
+      enabled: !!presaleAddress,
+    },
+  });
+
+  const presaleFailed = useReadContract({
+    address: presaleAddress,
+    abi: PresaleABI,
+    functionName: "presaleFailed",
+    query: {
+      enabled: !!presaleAddress,
+    },
+  });
+
+  const hasSoftCap = useReadContract({
+    address: presaleAddress,
+    abi: PresaleABI,
+    functionName: "hasSoftCap",
+    query: {
+      enabled: !!presaleAddress,
+    },
+  });
+
   // Reactive reads for token contract (requires token address to be loaded first)
   const tokenName = useReadContract({
     address: tokenAddress.data as `0x${string}`,
@@ -97,6 +123,24 @@ export function usePresale(presaleAddress: `0x${string}`) {
     },
   });
 
+  const tokenTotalSupply = useReadContract({
+    address: tokenAddress.data as `0x${string}`,
+    abi: MintableERC20ABI,
+    functionName: "totalSupply",
+    query: {
+      enabled: !!tokenAddress.data,
+    },
+  });
+
+  const tokenDecimals = useReadContract({
+    address: tokenAddress.data as `0x${string}`,
+    abi: MintableERC20ABI,
+    functionName: "decimals",
+    query: {
+      enabled: !!tokenAddress.data,
+    },
+  });
+
   return {
     tokenAddress,
     tokenName,
@@ -108,5 +152,10 @@ export function usePresale(presaleAddress: `0x${string}`) {
     endTime,
     softCap,
     softCapReached,
+    presaleOwner,
+    presaleFailed,
+    hasSoftCap,
+    tokenTotalSupply,
+    tokenDecimals,
   };
 }

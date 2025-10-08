@@ -9,10 +9,7 @@ export default function Footer() {
           {/* Legal Section */}
           <div className="space-y-3">
             <h3 className="font-semibold text-lg text-gray-800 dark:text-white">Legal</h3>
-            <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 block">
-              Privacy Policy
-            </Link>
-            <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 block">
+            <Link to="/terms" className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 block">
               Terms of Service
             </Link>
           </div>

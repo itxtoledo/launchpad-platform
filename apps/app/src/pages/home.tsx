@@ -5,32 +5,36 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { type Address } from "viem";
-import { FaucetButton } from "../components/FaucetButton";
 import { PresaleCard } from "@/components/PresaleCard";
 import { usePaginatedPresales } from "@/hooks";
 
 export default function Home() {
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc"); // "desc" for decreasing by creation, "asc" for increasing by creation
-  
-  const { presales, isLoading, isError } = usePaginatedPresales(page, 10, sortOrder);
+
+  const { presales, isLoading, isError } = usePaginatedPresales(
+    page,
+    10,
+    sortOrder
+  );
 
   const presaleAddresses = presales;
 
   return (
     <div className="container mx-auto my-8">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold">Welcome to Presale Platform</h1>
+        <h1 className="text-4xl font-bold" data-testid="welcome-heading">
+          Welcome to Presale Platform
+        </h1>
         <div className="flex items-center justify-center mt-4">
           <p className="text-lg text-muted-foreground">
             Discover and participate in the latest presales, invest in promising
             projects, and manage your investments with ease.
           </p>
-          <FaucetButton />
         </div>
       </div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Active Presales</h2>
+        <h2 className="text-2xl font-bold">All Presales</h2>
         <Button
           variant="outline"
           onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
@@ -55,7 +59,9 @@ export default function Home() {
         </div>
       ) : isError ? (
         <div className="text-center">
-          <p className="text-red-500">Error loading presales. Please try again later.</p>
+          <p className="text-red-500">
+            Error loading presales. Please try again later.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -13,6 +13,7 @@
     "lint": "turbo run lint"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "turbo": "latest"
   },
   "packageManager": "pnpm@8.15.6"

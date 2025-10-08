@@ -306,7 +306,7 @@ export default function PresaleCreation() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Create a New Presale</CardTitle>
+              <CardTitle data-testid="create-presale-heading">Create a New Presale</CardTitle>
               <CardDescription>
                 Fill out the form below to create a new presale for your token.
               </CardDescription>

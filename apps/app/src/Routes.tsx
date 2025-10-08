@@ -7,6 +7,7 @@ import { MyTokens } from "./pages/myTokens";
 import { TokenDetails } from "./pages/tokenDetails";
 import BlankPage from "./pages/BlankPage";
 import { FactoryOwnerPage } from "./pages/FactoryOwnerPage";
+import TermsOfService from "./pages/termsOfService";
 
 import Layout from "./components/Layout";
 
@@ -44,6 +45,11 @@ export const routeTree = rootRoute.addChildren([
   new Route({
     path: "/factory-owner",
     component: FactoryOwnerPage,
+    getParentRoute: () => rootRoute,
+  }),
+  new Route({
+    path: "/terms",
+    component: TermsOfService,
     getParentRoute: () => rootRoute,
   }),
 ]);

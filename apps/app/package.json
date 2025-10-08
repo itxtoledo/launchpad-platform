@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "test:e2e": "start-server-and-test dev http://localhost:5173 'cypress run --browser chrome --headless'"
+    "test:e2e": "start-server-and-test dev http://localhost:5173 'cypress run --browser chrome --headless'",
+    "test:playwright": "start-server-and-test dev http://localhost:5173 'npx playwright test'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

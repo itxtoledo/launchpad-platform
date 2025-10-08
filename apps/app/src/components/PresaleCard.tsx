@@ -42,14 +42,17 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="flex flex-col h-full">
         <CardHeader>
           <Skeleton className="h-6 w-3/4 mb-2" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow">
           <Skeleton className="h-4 w-full mb-2" />
           <Skeleton className="h-10 w-full mt-4" />
         </CardContent>
+        <div className="p-6 pt-0">
+          <Skeleton className="h-10 w-full" />
+        </div>
       </Card>
     );
   }
@@ -63,13 +66,13 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
   const hasEnded = endTime.data !== undefined && currentTime >= endTimeNum && endTimeNum !== 0;
 
   return (
-    <Card>
+    <Card className="flex flex-col h-full">
       <CardHeader>
         <CardTitle>
           {tokenName.data} ({tokenSymbol.data})
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         {/* Raised Amount */}
         <div className="mb-4">
           <div className="flex justify-between text-sm mb-1">
@@ -123,11 +126,12 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
             </div>
           )}
         </div>
-
+      </CardContent>
+      <div className="p-6 pt-0">
         <Link to={`/presale-details/${presaleAddress}`}>
           <Button className="w-full">View Details</Button>
         </Link>
-      </CardContent>
+      </div>
     </Card>
   );
 }

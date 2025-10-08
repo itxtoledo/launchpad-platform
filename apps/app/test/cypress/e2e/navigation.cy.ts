@@ -6,8 +6,8 @@ describe("Navigation Tests", () => {
     });
 
     it("should navigate to Presale Creation page from header", () => {
-      // At desktop resolution, click on "Presale Creation" link in header
-      cy.get("a").contains("Presale Creation").click();
+      // At desktop resolution, click on "Presale Creation" link in header using data-testid
+      cy.get('[data-testid="presale-creation-link"]').click();
 
       // Verify we are on the Presale Creation page
       cy.url().should("include", "/presale-creation");
@@ -15,32 +15,32 @@ describe("Navigation Tests", () => {
     });
 
     it("should navigate to My Tokens page from header", () => {
-      // At desktop resolution, click on "My Tokens" link in header
-      cy.get("a").contains("My Tokens").click();
+      // At desktop resolution, click on "My Tokens" link in header using data-testid
+      cy.get('[data-testid="my-tokens-link"]').click();
 
       // Verify we are on the My Tokens page
       cy.url().should("include", "/my-tokens");
-      cy.contains("My Tokens").should("be.visible");
+      cy.get('[data-testid="my-tokens-heading"]').should("be.visible");
     });
 
     it("should navigate to All Presales page from header", () => {
-      // At desktop resolution, click on "All Presales" link in header
-      cy.get("a").contains("All Presales").click();
+      // At desktop resolution, click on "All Presales" link in header using data-testid
+      cy.get('[data-testid="all-presales-link"]').click();
 
       // Verify we are on the Home page (All Presales)
       cy.url().should("eq", Cypress.config().baseUrl + "/");
-      cy.contains("Welcome to Presale Platform").should("be.visible");
+      cy.get('[data-testid="welcome-heading"]').should("be.visible");
     });
 
     it("should navigate to Factory Owner page when user is owner", () => {
-      // Since the isOwner state depends on blockchain data, we'll just verify the link text might exist
+      // Since the isOwner state depends on blockchain data, we'll just verify the link exists using data-testid
       // This test will pass only if the user is an owner
-      cy.get("a").contains("Factory Owner").should("exist");
+      cy.get('[data-testid="factory-owner-link"]').should("exist");
     });
 
     it("should preserve navigation state across page reloads", () => {
-      // Navigate to presale creation
-      cy.get("a").contains("Presale Creation").click();
+      // Navigate to presale creation using data-testid
+      cy.get('[data-testid="presale-creation-link"]').click();
       cy.url().should("include", "/presale-creation");
 
       // Reload the page
@@ -52,22 +52,22 @@ describe("Navigation Tests", () => {
 
     it("should navigate using logo link back to home", () => {
       // Navigate to another page first
-      cy.get("a").contains("Presale Creation").click();
+      cy.get('[data-testid="presale-creation-link"]').click();
       cy.url().should("include", "/presale-creation");
 
-      // Click on the logo to go back to home (more specific selector)
-      cy.get('a[href="/"] svg').first().click(); // Click on the MountainIcon in the logo link
+      // Click on the logo to go back to home using data-testid
+      cy.get('[data-testid="logo-home-link"]').click();
 
       // Should be back on home page
       cy.url().should("eq", Cypress.config().baseUrl + "/");
-      cy.contains("Welcome to Presale Platform").should("be.visible");
+      cy.get('[data-testid="welcome-heading"]').should("be.visible");
     });
 
     it("should have working navigation links in header (desktop)", () => {
-      // At desktop resolution, ensure header navigation links are visible
-      cy.get("a").contains("All Presales").should("be.visible");
-      cy.get("a").contains("Presale Creation").should("be.visible");
-      cy.get("a").contains("My Tokens").should("be.visible");
+      // At desktop resolution, ensure header navigation links are visible using data-testid
+      cy.get('[data-testid="all-presales-link"]').should("be.visible");
+      cy.get('[data-testid="presale-creation-link"]').should("be.visible");
+      cy.get('[data-testid="my-tokens-link"]').should("be.visible");
     });
   });
 
@@ -88,8 +88,8 @@ describe("Navigation Tests", () => {
     });
 
     it("should navigate to Presale Creation page using mobile navigation", () => {
-      // Click on "Create" link in mobile nav (BottomNav) - more specific selector
-      cy.get("div.fixed.bottom-0 nav a").contains("Create").click();
+      // Click on "Create" link in mobile nav (BottomNav) using data-testid
+      cy.get('[data-testid="mobile-create-link"]').click();
 
       // Verify we are on the Presale Creation page
       cy.url().should("include", "/presale-creation");
@@ -113,20 +113,19 @@ describe("Navigation Tests", () => {
       cy.visit("/presale-creation");
       cy.url().should("include", "/presale-creation");
 
-      // Then go back to home using mobile nav (BottomNav) - more specific selector
-      cy.get("div.fixed.bottom-0 nav a")
-        .contains("Home")
+      // Then go back to home using mobile nav (BottomNav) using data-testid
+      cy.get('[data-testid="mobile-home-link"]')
         .click({ force: true });
 
       // Verify we are on the Home page
       cy.url().should("eq", Cypress.config().baseUrl + "/");
-      cy.contains("Welcome to Presale Platform").should("be.visible");
+      cy.get('[data-testid="welcome-heading"]').should("be.visible");
     });
 
     it("should navigate to presales page using mobile navigation (currently broken - /presales route does not exist)", () => {
-      // Click on "Presales" link in mobile nav (BottomNav) - more specific selector
+      // Click on "Presales" link in mobile nav (BottomNav) using data-testid
       // Currently, this route doesn't exist in the router and would cause a 404
-      cy.get("div.fixed.bottom-0 nav a").contains("Presales").click();
+      cy.get('[data-testid="mobile-presales-link"]').click();
 
       // This will highlight the issue where /presales route doesn't exist
       // The test should pass if the route is properly handled or redirect to home

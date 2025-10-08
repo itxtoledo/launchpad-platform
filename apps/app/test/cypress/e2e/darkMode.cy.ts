@@ -19,8 +19,8 @@ describe("Dark Mode Tests", () => {
     // Initially should be in light mode
     cy.get("html").should("not.have.class", "dark");
 
-    // Click the dark mode toggle button - look for the button with rounded-full class (specific to DarkModeToggle)
-    cy.get("header button.rounded-full").first().click();
+    // Click the dark mode toggle button using data-testid
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
 
     // Verify that the 'dark' class is now present
     cy.get("html").should("have.class", "dark");
@@ -39,10 +39,10 @@ describe("Dark Mode Tests", () => {
     cy.get("html").should("not.have.class", "dark");
 
     // Click the dark mode toggle button twice
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
     cy.get("html").should("have.class", "dark");
 
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
     cy.get("html").should("not.have.class", "dark");
 
     // Verify back to light mode colors
@@ -53,19 +53,19 @@ describe("Dark Mode Tests", () => {
 
   it("should show the correct icon based on the current theme", () => {
     // Initially in light mode - should show moon icon (for dark mode)
-    cy.get("header button.rounded-full svg").first().should("have.length", 1); // Check that an icon exists
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button svg').should("have.length", 1); // Check that an icon exists
 
     // Click to switch to dark mode
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
 
     // In dark mode, the button should now have the sun icon to switch back to light mode
     cy.get("html").should("have.class", "dark");
-    cy.get("header button.rounded-full svg").first().should("be.visible");
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button svg').should("be.visible");
   });
 
   it("should persist dark mode preference after page reload", () => {
     // Switch to dark mode
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
     cy.get("html").should("have.class", "dark");
 
     // Reload the page
@@ -115,7 +115,7 @@ describe("Dark Mode Tests", () => {
     cy.get("footer").should("exist");
 
     // Switch to dark mode
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
     cy.get("html").should("have.class", "dark");
 
     // Footer should update to dark mode colors (different from light mode)
@@ -126,7 +126,7 @@ describe("Dark Mode Tests", () => {
 
   it("should apply dark mode to mobile navigation", () => {
     // Start in dark mode (using desktop viewport to toggle)
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
     cy.get("html").should("have.class", "dark");
 
     // Now change to mobile viewport to check mobile navigation dark mode
@@ -141,11 +141,11 @@ describe("Dark Mode Tests", () => {
 
   it("should maintain dark mode across different pages", () => {
     // Start in dark mode
-    cy.get("header button.rounded-full").first().click();
+    cy.get('[data-testid="dark-mode-toggle-wrapper"] button').click();
     cy.get("html").should("have.class", "dark");
 
-    // Navigate to presale creation page
-    cy.get("a").contains("Presale Creation").click();
+    // Navigate to presale creation page using data-testid
+    cy.get('[data-testid="presale-creation-link"]').click();
     cy.url().should("include", "/presale-creation");
 
     // Verify dark mode is still active on the new page
@@ -154,8 +154,8 @@ describe("Dark Mode Tests", () => {
       .should("have.css", "background-color")
       .should("not.eq", "rgb(255, 255, 255)"); // Background should not be white
 
-    // Navigate to My Tokens page
-    cy.get("a").contains("My Tokens").click();
+    // Navigate to My Tokens page using data-testid
+    cy.get('[data-testid="my-tokens-link"]').click();
     cy.url().should("include", "/my-tokens");
 
     // Verify dark mode is still active on the new page
