@@ -21,7 +21,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
           <RouterProvider router={router} />
-          {process.env.NODE_ENV !== 'production' && (
+          {process.env.NODE_ENV === "development" && (
             <TanStackRouterDevtools router={router} />
           )}
         </RainbowKitProvider>
