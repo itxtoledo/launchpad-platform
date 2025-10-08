@@ -9,10 +9,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "test:e2e": "start-server-and-test dev http://localhost:5173 'cypress run --browser chrome --headless'",
-    "test:playwright": "start-server-and-test dev http://localhost:5173 'npx playwright test'"
+    "synpress:cache": "pnpm exec synpress",
+    "test:e2e": "HEADLESS=true npx playwright test",
+    "test:playwright": "HEADLESS=true npx playwright test"
   },
   "dependencies": {
+    "@playwright/test": "1.48.2",
     "@hookform/resolvers": "^5.2.1",
     "@launchpad-platform/contracts": "workspace:*",
     "@radix-ui/react-checkbox": "^1.3.3",
