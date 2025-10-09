@@ -32,10 +32,13 @@ jobs:
         # Run the deploy script, which connects to localhost
         chmod +x ./deploy-viem-only.sh
         ./deploy-viem-only.sh
+    - name: Install xvfb
+      run: sudo apt-get update && sudo apt-get install -y xvfb
     - name: Install Playwright Browsers
       run: pnpm exec playwright install --with-deps
     - name: Run Playwright tests
-      run: cd apps/app && pnpm exec playwright test
+      run: xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" -- pnpm exec playwright test
+      working-directory: apps/app
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
