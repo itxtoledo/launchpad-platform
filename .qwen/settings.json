@@ -1,19 +1,22 @@
 {
-    "contextFileName": "GEMINI.md",
-    "mcpServers": {
-        "magicui": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@magicuidesign/mcp"
-            ]
-        },
-        "shadcn": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@jpisnice/shadcn-ui-mcp-server"
-            ]
-        }
+  "context": {
+    "fileName": "GEMINI.md"
+  },
+  "mcpServers": {
+    "magicui": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@magicuidesign/mcp"
+      ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@jpisnice/shadcn-ui-mcp-server"
+      ]
     }
+  },
+  "$version": 2
 }
