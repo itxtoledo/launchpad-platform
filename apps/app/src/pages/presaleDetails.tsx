@@ -24,6 +24,7 @@ import {
   useReadContract,
   useAccount,
 } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { formatEther, formatUnits, type Address, parseUnits } from "viem";
 
 // importing contract ABI
@@ -35,6 +36,7 @@ import { useNativeCurrency } from "@/hooks";
 export default function PresaleDetails() {
   const nativeCurrencySymbol = useNativeCurrency();
   const { address: connectedAddress } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { address } = useParams({ from: "/presale-details/$address" });
   const { data: hash, error, isPending, writeContract } = useWriteContract();
   const [tokenAmount, setTokenAmount] = useState("");
@@ -182,6 +184,13 @@ export default function PresaleDetails() {
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!connectedAddress) {
+      // If not connected, open the wallet connection modal
+      openConnectModal?.();
+      return;
+    }
+
     // Convert token amount to smallest unit (wei)
     const amount = parseUnits(tokenAmount || "0", Number(tokenDecimals));
 
@@ -369,25 +378,37 @@ export default function PresaleDetails() {
                   <h2 className="text-2xl font-bold">Owner Actions</h2>
                   <div className="flex flex-col space-y-2">
                     <Button
-                      onClick={() => writeContract({
-                        address: address as Address,
-                        abi: presaleAbi,
-                        functionName: "withdrawETH",
-                      })}
+                      onClick={() =>
+                        writeContract({
+                          address: address as Address,
+                          abi: presaleAbi,
+                          functionName: "withdrawETH",
+                        })
+                      }
                       disabled={isPending || !hasStarted}
                     >
-                      {(!hasStarted) ? "Presale Not Started" : (isPending ? "Confirming..." : "Withdraw ETH")}
+                      {!hasStarted
+                        ? "Presale Not Started"
+                        : isPending
+                        ? "Confirming..."
+                        : "Withdraw ETH"}
                     </Button>
                     <Button
-                      onClick={() => writeContract({
-                        address: address as Address,
-                        abi: presaleAbi,
-                        functionName: "withdrawToken",
-                        args: [readTokenAddress.data as Address],
-                      })}
+                      onClick={() =>
+                        writeContract({
+                          address: address as Address,
+                          abi: presaleAbi,
+                          functionName: "withdrawToken",
+                          args: [readTokenAddress.data as Address],
+                        })
+                      }
                       disabled={isPending || !hasStarted}
                     >
-                      {(!hasStarted) ? "Presale Not Started" : (isPending ? "Confirming..." : "Withdraw Tokens")}
+                      {!hasStarted
+                        ? "Presale Not Started"
+                        : isPending
+                        ? "Confirming..."
+                        : "Withdraw Tokens"}
                     </Button>
                   </div>
                 </div>
@@ -398,14 +419,17 @@ export default function PresaleDetails() {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold">Presale Ended</h2>
                   <p className="text-muted-foreground">
-                    The presale has ended and the soft cap was not reached. You can now withdraw your contributed funds.
+                    The presale has ended and the soft cap was not reached. You
+                    can now withdraw your contributed funds.
                   </p>
                   <Button
-                    onClick={() => writeContract({
-                      address: address as Address,
-                      abi: presaleAbi,
-                      functionName: "refund",
-                    })}
+                    onClick={() =>
+                      writeContract({
+                        address: address as Address,
+                        abi: presaleAbi,
+                        functionName: "refund",
+                      })
+                    }
                     disabled={isPending}
                     className="w-full"
                   >
@@ -416,7 +440,8 @@ export default function PresaleDetails() {
                   {isConfirmed && <div>Transaction confirmed.</div>}
                   {error && (
                     <div>
-                      Alert: {(error as BaseError).shortMessage || error.message}
+                      Alert:{" "}
+                      {(error as BaseError).shortMessage || error.message}
                     </div>
                   )}
                 </div>
@@ -425,11 +450,16 @@ export default function PresaleDetails() {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold">Presale Not Started</h2>
                   <p className="text-muted-foreground">
-                    This presale has not started yet. Please wait until the presale starts.
+                    This presale has not started yet. Please wait until the
+                    presale starts.
                   </p>
                   <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-                    <div className="text-sm font-medium text-muted-foreground">Starts in:</div>
-                    <CountdownTimer targetDate={new Date(Number(startTime) * 1000)} />
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Starts in:
+                    </div>
+                    <CountdownTimer
+                      targetDate={new Date(Number(startTime) * 1000)}
+                    />
                   </div>
                 </div>
               ) : (
@@ -437,7 +467,8 @@ export default function PresaleDetails() {
                   <div className="space-y-2">
                     <h2 className="text-2xl font-bold">Contribute</h2>
                     <p className="text-muted-foreground">
-                      Enter the amount of {tokenSymbol} tokens you want to purchase.
+                      Enter the amount of {tokenSymbol} tokens you want to
+                      purchase.
                     </p>
                   </div>
                   <form onSubmit={submit} className="space-y-4">
@@ -481,15 +512,20 @@ export default function PresaleDetails() {
                       {nativeCurrencySymbol}
                     </div>
 
-                    <Button type="submit" disabled={isPending} className="w-full">
-                      {isPending ? "Confirming..." : "Contribute"}
+                    <Button type="submit" className="w-full">
+                      {isPending
+                        ? "Confirming..."
+                        : !connectedAddress
+                        ? "Connect Wallet"
+                        : "Contribute"}
                     </Button>
                     {hash && <div>Transaction Hash: {hash}</div>}
                     {isConfirming && <div>Waiting for confirmation...</div>}
                     {isConfirmed && <div>Transaction confirmed.</div>}
                     {error && (
                       <div>
-                        Alert: {(error as BaseError).shortMessage || error.message}
+                        Alert:{" "}
+                        {(error as BaseError).shortMessage || error.message}
                       </div>
                     )}
                   </form>

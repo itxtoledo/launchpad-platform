@@ -27,7 +27,7 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
   const nativeCurrencySymbol = useNativeCurrency();
   const currentTime = Date.now() / 1000; // Current time in seconds
 
-  const isLoading = 
+  const isLoading =
     tokenName.isLoading ||
     tokenSymbol.isLoading ||
     totalContributed.isLoading ||
@@ -37,8 +37,14 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
     softCap.isLoading ||
     softCapReached.isLoading;
 
-  const progress = hardCap.data && Number(hardCap.data) > 0 ? (Number(totalContributed.data || 0) / Number(hardCap.data)) * 100 : 0;
-  const softCapProgress = softCap.data && Number(softCap.data) > 0 ? (Number(totalContributed.data || 0) / Number(softCap.data)) * 100 : 0;
+  const progress =
+    hardCap.data && Number(hardCap.data) > 0
+      ? (Number(totalContributed.data || 0) / Number(hardCap.data)) * 100
+      : 0;
+  const softCapProgress =
+    softCap.data && Number(softCap.data) > 0
+      ? (Number(totalContributed.data || 0) / Number(softCap.data)) * 100
+      : 0;
 
   if (isLoading) {
     return (
@@ -59,8 +65,10 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
   const endTimeNum = Number(endTime.data);
 
   // Determine presale status
-  const hasStarted = startTime.data !== undefined && currentTime >= startTimeNum;
-  const hasEnded = endTime.data !== undefined && currentTime >= endTimeNum && endTimeNum !== 0;
+  const hasStarted =
+    startTime.data !== undefined && currentTime >= startTimeNum;
+  const hasEnded =
+    endTime.data !== undefined && currentTime >= endTimeNum && endTimeNum !== 0;
 
   return (
     <Card>
@@ -75,13 +83,23 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
           <div className="flex justify-between text-sm mb-1">
             <span>Raised</span>
             <span>
-              {totalContributed.data !== undefined ? (Number(totalContributed.data) / 1e18).toFixed(4) : "0.0000"} {nativeCurrencySymbol}
+              {totalContributed.data !== undefined
+                ? (Number(totalContributed.data) / 1e18).toFixed(4)
+                : "0.0000"}{" "}
+              {nativeCurrencySymbol}
             </span>
           </div>
           <Progress value={progress} className="w-full" />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>
-              {totalContributed.data !== undefined ? (Number(totalContributed.data) / 1e18).toFixed(4) : "0.0000"} / {hardCap.data !== undefined ? (Number(hardCap.data) / 1e18).toFixed(4) : "0.0000"} {nativeCurrencySymbol}
+              {totalContributed.data !== undefined
+                ? (Number(totalContributed.data) / 1e18).toFixed(4)
+                : "0.0000"}{" "}
+              /{" "}
+              {hardCap.data !== undefined
+                ? (Number(hardCap.data) / 1e18).toFixed(4)
+                : "0.0000"}{" "}
+              {nativeCurrencySymbol}
             </span>
           </div>
         </div>
@@ -98,7 +116,14 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
             <Progress value={softCapProgress} className="w-full" />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>
-                {totalContributed.data !== undefined ? (Number(totalContributed.data) / 1e18).toFixed(4) : "0.0000"} / {softCap.data !== undefined ? (Number(softCap.data) / 1e18).toFixed(4) : "0.0000"} {nativeCurrencySymbol}
+                {totalContributed.data !== undefined
+                  ? (Number(totalContributed.data) / 1e18).toFixed(4)
+                  : "0.0000"}{" "}
+                /{" "}
+                {softCap.data !== undefined
+                  ? (Number(softCap.data) / 1e18).toFixed(4)
+                  : "0.0000"}{" "}
+                {nativeCurrencySymbol}
               </span>
             </div>
           </div>
@@ -109,7 +134,9 @@ export function PresaleCard({ presaleAddress }: PresaleCardProps) {
           {!hasStarted ? (
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Starts in:</span>
-              <CountdownTimer targetDate={new Date(Number(startTime.data) * 1000)} />
+              <CountdownTimer
+                targetDate={new Date(Number(startTime.data) * 1000)}
+              />
             </div>
           ) : hasEnded ? (
             <div className="flex items-center justify-between">
