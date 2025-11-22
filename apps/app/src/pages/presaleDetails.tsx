@@ -354,7 +354,9 @@ export default function PresaleDetails() {
                   <div className="text-sm font-medium text-muted-foreground">
                     End Time
                   </div>
-                  <div>{new Date(Number(endTime) * 1000).toLocaleString()}</div>
+                  <div>
+                    {endTime === 0n ? "No limit" : new Date(Number(endTime) * 1000).toLocaleString()}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
