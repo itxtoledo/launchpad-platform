@@ -9,7 +9,6 @@ import "./index.css";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
 globalThis.Buffer = Buffer;
 
@@ -21,7 +20,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
           <RouterProvider router={router} />
-          <TanStackRouterDevtools router={router} />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
