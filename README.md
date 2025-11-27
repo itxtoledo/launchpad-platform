@@ -76,8 +76,6 @@ We welcome contributions from the community! Here’s how you can help:
 3. Make your changes.
 4. Submit a pull request.
 
-Please make sure to follow our [contribution guidelines](CONTRIBUTING.md).
-
 ## License 📜
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
