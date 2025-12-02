@@ -56,12 +56,14 @@ describe("Presale with Soft Cap", function () {
           { value: parseEther("0.01") }
         );
         // If no error was thrown, the test should fail
-        assert.fail("Expected presale creation to fail with softCap and no endTime");
+        assert.fail(
+          "Expected presale creation to fail with softCap and no endTime"
+        );
       } catch (error: any) {
         // Check that the error message contains the expected error
         assert.ok(
-          error.message.includes("SoftCapRequiresTimeLimit") || 
-          error.message.includes("reverted"),
+          error.message.includes("SoftCapRequiresTimeLimit") ||
+            error.message.includes("reverted"),
           `Expected SoftCapRequiresTimeLimit error, got: ${error.message}`
         );
       }
