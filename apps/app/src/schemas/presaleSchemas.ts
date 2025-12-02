@@ -58,4 +58,16 @@ export const presaleSchema = z.object({
   }
 });
 
-export type PresaleFormData = z.infer<typeof presaleSchema>;
+export interface PresaleFormData {
+  name: string;
+  symbol: string;
+  supply: string;
+  price: string;
+  hardCap: string;
+  softCap: string;
+  softCapPrice: string;
+  startTime: string;
+  endTime?: string;
+  noTimeLimit?: boolean;
+  hasSoftCap?: boolean;
+}

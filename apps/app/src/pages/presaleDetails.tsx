@@ -31,8 +31,8 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { formatEther, formatUnits, type Address, parseUnits } from "viem";
 
 // importing contract ABI
-import presaleAbi from "@launchpad-platform/contracts/abi_ts/contracts/Presale.sol/Presale";
-import tokenAbi from "@launchpad-platform/contracts/abi_ts/contracts/MintableERC20.sol/MintableERC20";
+import { PresaleABI } from "@launchpad-platform/contracts/abi_ts/Presale";
+import { MintableERC20ABI } from "@launchpad-platform/contracts/abi_ts/MintableERC20";
 import { useNativeCurrency } from "@/hooks";
 
 export default function PresaleDetails() {
@@ -50,7 +50,7 @@ export default function PresaleDetails() {
   >("idle");
 
   const presaleContract = {
-    abi: presaleAbi,
+    abi: PresaleABI,
     address: address as Address,
   } as const;
 
@@ -67,7 +67,7 @@ export default function PresaleDetails() {
   });
 
   const tokenContract = {
-    abi: tokenAbi,
+    abi: MintableERC20ABI,
     address: readTokenAddress.data,
   } as const;
 
@@ -201,14 +201,14 @@ export default function PresaleDetails() {
     setIsConfirmationModalOpen(false);
     setIsTransactionModalOpen(true);
     setTransactionStatus("signing");
-  
+
     try {
       const amount = parseUnits(tokenAmount || "0", Number(tokenDecimals));
       writeContract({
         address: (address as string)?.startsWith("0x")
           ? (address as Address)
           : (`0x${address ?? ""}` as Address),
-        abi: presaleAbi,
+        abi: PresaleABI,
         functionName: "contribute",
         args: [amount],
         value: parseUnits(ethTotal, 18),
@@ -425,7 +425,7 @@ export default function PresaleDetails() {
                       onClick={() =>
                         writeContract({
                           address: address as Address,
-                          abi: presaleAbi,
+                          abi: PresaleABI,
                           functionName: "withdrawETH",
                         })
                       }
@@ -441,7 +441,7 @@ export default function PresaleDetails() {
                       onClick={() =>
                         writeContract({
                           address: address as Address,
-                          abi: presaleAbi,
+                          abi: PresaleABI,
                           functionName: "withdrawToken",
                           args: [readTokenAddress.data as Address],
                         })
@@ -470,7 +470,7 @@ export default function PresaleDetails() {
                     onClick={() =>
                       writeContract({
                         address: address as Address,
-                        abi: presaleAbi,
+                        abi: PresaleABI,
                         functionName: "refund",
                       })
                     }
@@ -515,7 +515,13 @@ export default function PresaleDetails() {
                       purchase.
                     </p>
                   </div>
-                  <form onSubmit={(e) => { e.preventDefault(); handleContribute(); }} className="space-y-4">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleContribute();
+                    }}
+                    className="space-y-4"
+                  >
                     {/* Token Amount Input - Uniswap Style */}
                     <div className="space-y-2">
                       <Label htmlFor="amount">From</Label>
@@ -556,8 +562,15 @@ export default function PresaleDetails() {
                       {nativeCurrencySymbol}
                     </div>
 
-                    <Button type="submit" className="w-full"
-                      disabled={isPending || !tokenAmount || parseFloat(tokenAmount) <= 0}>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        isPending ||
+                        !tokenAmount ||
+                        parseFloat(tokenAmount) <= 0
+                      }
+                    >
                       {isPending
                         ? "Confirming..."
                         : !connectedAddress
@@ -577,7 +590,7 @@ export default function PresaleDetails() {
         transactionStatus={transactionStatus}
         title="Contribute to Presale"
         successMessage="Your contribution has been confirmed!"
-        errorMessage={error?.message}
+        errorMessage={(error as BaseError)?.shortMessage || error?.message}
       />
       <ContributionConfirmationModal
         isOpen={isConfirmationModalOpen}

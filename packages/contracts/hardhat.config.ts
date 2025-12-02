@@ -1,10 +1,9 @@
-import { configVariable, type HardhatUserConfig } from "hardhat/config";
+import { configVariable, task, type HardhatUserConfig } from "hardhat/config";
 import hardhatViem from "@nomicfoundation/hardhat-viem";
 import hardhatVerify from "@nomicfoundation/hardhat-verify";
 import hardhatViemAssertions from "@nomicfoundation/hardhat-viem-assertions";
 import HardhatNodeTestRunner from "@nomicfoundation/hardhat-node-test-runner";
 import hardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
-import hardhatAbiExporter from "@solidstate/hardhat-abi-exporter";
 import HardhatIgnitionViem from "@nomicfoundation/hardhat-ignition-viem";
 import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import {
@@ -17,6 +16,10 @@ import {
   celo,
   celoAlfajores,
 } from "viem/chains";
+
+const exportAbiTask = task("export-abi", "Exports the ABIs")
+  .setAction(() => import("./tasks/export-abi.js"))
+  .build();
 
 export const desiredChains = [
   // 56
@@ -58,7 +61,6 @@ const config: HardhatUserConfig = {
     hardhatViem,
     hardhatViemAssertions,
     hardhatNetworkHelpers,
-    hardhatAbiExporter,
     HardhatIgnitionViem,
   ],
   paths: {
@@ -75,19 +77,6 @@ const config: HardhatUserConfig = {
       },
     },
   },
-  abiExporter: [
-    // {
-    //   path: "./abi",
-    //   format: "json",
-    //   runOnCompile: true,
-    // },
-    {
-      path: "./abi_ts",
-      format: "typescript",
-      clear: true,
-      runOnCompile: true,
-    },
-  ],
   networks,
   verify: {
     etherscan: {
@@ -97,6 +86,7 @@ const config: HardhatUserConfig = {
       enabled: false,
     },
   },
+  tasks: [exportAbiTask],
 };
 
 export default config;

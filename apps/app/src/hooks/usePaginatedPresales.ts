@@ -1,7 +1,7 @@
 import { useReadContract } from "wagmi";
 import { usePublicClient } from "wagmi";
 import { contracts } from "../config/contracts";
-import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
+import { PresaleFactoryABI } from "@launchpad-platform/contracts/abi_ts/PresaleFactory";
 
 export function usePaginatedPresales(
   page: number = 1,
