@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "oxlint .",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -44,16 +44,11 @@
     "@types/node": "^20.19.17",
     "@types/react": "^18.2.23",
     "@types/react-dom": "^18.2.8",
-    "@typescript-eslint/eslint-plugin": "^7.15.0",
-    "@typescript-eslint/parser": "^7.15.0",
     "@vitejs/plugin-react": "^4.7.0",
     "buffer": "^6.0.3",
-    "eslint": "^8.57.0",
-    "eslint-plugin-jsx-a11y": "^6.9.0",
-    "eslint-plugin-react": "^7.34.3",
-    "eslint-plugin-react-hooks": "^4.6.2",
     "tailwind-merge": "^3.3.1",
-    "typescript": "^5.9.2",
-    "vite": "^7.0.6"
+    "typescript": "7.0.2",
+    "vite": "^7.0.6",
+    "oxlint": "^1.93.0"
   }
 }
