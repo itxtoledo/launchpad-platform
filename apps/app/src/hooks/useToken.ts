@@ -1,5 +1,5 @@
 import { useReadContract } from "wagmi";
-import MintableERC20ABI from "@launchpad-platform/contracts/abi_ts/contracts/MintableERC20.sol/MintableERC20";
+import { MintableERC20ABI } from "@launchpad-platform/contracts/abi_ts/MintableERC20";
 
 export function useToken(tokenAddress: `0x${string}`) {
   const { data: presaleAddress, isLoading } = useReadContract({

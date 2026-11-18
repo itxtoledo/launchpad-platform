@@ -24,7 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 // importing necessary wagmi for contracts integrations
 import { usePublicClient, type BaseError } from "wagmi";
-import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
+import { PresaleFactoryABI } from "@launchpad-platform/contracts/abi_ts/PresaleFactory";
 // importing our custom hook and ABI
 import { usePresaleFactory } from "@/hooks/usePresaleFactory";
 import { useNativeCurrency } from "@/hooks";
@@ -76,7 +76,8 @@ function SupplyField({
       <FormDescription>
         The total number of tokens that will be minted and sent to your wallet.
         This is not the maximum supply, the maximum supply is defined by the
-        hard cap and token price. Note: The supply will be multiplied by 10^18 to account for 18 decimals.
+        hard cap and token price. Note: The supply will be multiplied by 10^18
+        to account for 18 decimals.
       </FormDescription>
       <FormMessage />
     </FormItem>
@@ -102,7 +103,8 @@ export default function PresaleCreation() {
   >("idle");
   const [presaleAddress, setPresaleAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [currentFormData, setCurrentFormData] = useState<PresaleFormData | null>(null);
+  const [currentFormData, setCurrentFormData] =
+    useState<PresaleFormData | null>(null);
 
   const form = useForm<PresaleFormData>({
     resolver: zodResolver(presaleSchema),
@@ -131,7 +133,7 @@ export default function PresaleCreation() {
 
   // Format the presale creation fee for display
   const formatFee = (fee: bigint | undefined | unknown) => {
-    if (!fee || typeof fee !== 'bigint') return "0";
+    if (!fee || typeof fee !== "bigint") return "0";
     return parseFloat(formatEther(fee)).toString();
   };
 
@@ -263,7 +265,13 @@ export default function PresaleCreation() {
       if (parsedLogs.length > 0) {
         // Access the presale address from the event args - properly handle the unknown type
         const event = parsedLogs[0];
-        if (event && 'args' in event && event.args && typeof event.args === 'object' && 'presale' in event.args) {
+        if (
+          event &&
+          "args" in event &&
+          event.args &&
+          typeof event.args === "object" &&
+          "presale" in event.args
+        ) {
           const presaleAddress = (event.args as { presale?: Address }).presale;
           if (presaleAddress) {
             setPresaleAddress(presaleAddress);
@@ -286,9 +294,9 @@ export default function PresaleCreation() {
     // Ensure the values conform to the expected format for the confirmation modal
     const normalizedValues: PresaleFormData = {
       ...values,
-      endTime: values.endTime || undefined,
+      endTime: values.noTimeLimit ? "" : values.endTime || "", // Ensure endTime is always a string
       noTimeLimit: values.noTimeLimit || false,
-      hasSoftCap: values.hasSoftCap || false
+      hasSoftCap: values.hasSoftCap || false,
     };
     setCurrentFormData(normalizedValues);
     setIsConfirmationModalOpen(true);
@@ -341,11 +349,13 @@ export default function PresaleCreation() {
                   <FormItem>
                     <FormLabel>Token Symbol</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter your token symbol" 
+                      <Input
+                        placeholder="Enter your token symbol"
                         className="uppercase"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          field.onChange(e.target.value.toUpperCase())
+                        }
                       />
                     </FormControl>
                     <FormDescription>
@@ -622,7 +632,7 @@ export default function PresaleCreation() {
           fee={formatFee(presaleCreationFee)}
         />
       )}
-      
+
       {/* Transaction modal */}
       <TransactionModal
         isOpen={isModalOpen}
@@ -631,6 +641,7 @@ export default function PresaleCreation() {
         presaleAddress={presaleAddress || undefined}
         transactionStatus={transactionStatus}
         errorMessage={error}
+        title="Presale Creation Transaction" // Added title prop
       />
     </>
   );

@@ -5,7 +5,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { contracts } from "../config/contracts";
-import PresaleFactoryABI from "@launchpad-platform/contracts/abi_ts/contracts/PresaleFactory.sol/PresaleFactory";
+import { PresaleFactoryABI } from "@launchpad-platform/contracts/abi_ts/PresaleFactory";
 import { useMemo } from "react";
 
 export function usePresaleFactory() {

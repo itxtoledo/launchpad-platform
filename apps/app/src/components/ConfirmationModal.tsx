@@ -8,20 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { formatNumberWithThousands } from "@/lib/utils";
 import { useNativeCurrency } from "@/hooks";
+import { PresaleFormData } from "@/schemas/presaleSchemas";
 
-interface PresaleFormData {
-  name: string;
-  symbol: string;
-  supply: string;
-  price: string;
-  hardCap: string;
-  softCap: string;
-  softCapPrice: string;
-  startTime: string;
-  endTime: string | undefined;
-  noTimeLimit: boolean;
-  hasSoftCap: boolean;
-}
+
 
 interface ConfirmationModalProps {
   isOpen: boolean;

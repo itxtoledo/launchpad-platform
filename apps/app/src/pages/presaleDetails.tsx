@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { FaucetButton } from "@/components/FaucetButton";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { ContributionTransactionModal } from "@/components/ContributionTransactionModal";
+import { ContributionConfirmationModal } from "@/components/ContributionConfirmationModal";
 
 import { useState, useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
@@ -23,14 +25,14 @@ import {
   type BaseError,
   useReadContract,
   useAccount,
+  useReadContracts,
 } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { formatEther, formatUnits, type Address, parseUnits } from "viem";
 
 // importing contract ABI
-import presaleAbi from "@launchpad-platform/contracts/abi_ts/contracts/Presale.sol/Presale";
-import tokenAbi from "@launchpad-platform/contracts/abi_ts/contracts/MintableERC20.sol/MintableERC20";
-import { useReadContracts } from "wagmi";
+import { PresaleABI } from "@launchpad-platform/contracts/abi_ts/Presale";
+import { MintableERC20ABI } from "@launchpad-platform/contracts/abi_ts/MintableERC20";
 import { useNativeCurrency } from "@/hooks";
 
 export default function PresaleDetails() {
@@ -41,9 +43,14 @@ export default function PresaleDetails() {
   const { data: hash, error, isPending, writeContract } = useWriteContract();
   const [tokenAmount, setTokenAmount] = useState("");
   const [ethTotal, setEthTotal] = useState("0");
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [transactionStatus, setTransactionStatus] = useState<
+    "idle" | "signing" | "sending" | "confirming" | "confirmed" | "error"
+  >("idle");
 
   const presaleContract = {
-    abi: presaleAbi,
+    abi: PresaleABI,
     address: address as Address,
   } as const;
 
@@ -60,7 +67,7 @@ export default function PresaleDetails() {
   });
 
   const tokenContract = {
-    abi: tokenAbi,
+    abi: MintableERC20ABI,
     address: readTokenAddress.data,
   } as const;
 
@@ -182,33 +189,51 @@ export default function PresaleDetails() {
     }
   }, [tokenAmount, multicallQuery.data]);
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
+  async function handleContribute() {
     if (!connectedAddress) {
-      // If not connected, open the wallet connection modal
       openConnectModal?.();
       return;
     }
+    setIsConfirmationModalOpen(true);
+  }
 
-    // Convert token amount to smallest unit (wei)
-    const amount = parseUnits(tokenAmount || "0", Number(tokenDecimals));
+  async function handleConfirmContribution() {
+    setIsConfirmationModalOpen(false);
+    setIsTransactionModalOpen(true);
+    setTransactionStatus("signing");
 
-    writeContract({
-      address: (address as string)?.startsWith("0x")
-        ? (address as Address)
-        : (`0x${address ?? ""}` as Address),
-      abi: presaleAbi,
-      functionName: "contribute",
-      args: [amount],
-      value: BigInt(parseUnits(ethTotal, 18).toString()), // Send ETH value
-    });
+    try {
+      const amount = parseUnits(tokenAmount || "0", Number(tokenDecimals));
+      writeContract({
+        address: (address as string)?.startsWith("0x")
+          ? (address as Address)
+          : (`0x${address ?? ""}` as Address),
+        abi: PresaleABI,
+        functionName: "contribute",
+        args: [amount],
+        value: parseUnits(ethTotal, 18),
+      });
+      setTransactionStatus("sending");
+    } catch (e) {
+      setTransactionStatus("error");
+      console.error(e);
+    }
   }
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({
       hash,
     });
+
+  useEffect(() => {
+    if (isConfirming) {
+      setTransactionStatus("confirming");
+    } else if (isConfirmed) {
+      setTransactionStatus("confirmed");
+    } else if (error) {
+      setTransactionStatus("error");
+    }
+  }, [isConfirming, isConfirmed, error]);
 
   const hardCap = multicallQuery.data?.[5].result ?? 0n;
   const softCap = multicallQuery.data?.[6].result ?? 0n; // Added softCap
@@ -342,22 +367,39 @@ export default function PresaleDetails() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Start Time
+                {hasStarted && !hasEnded && endTime !== 0n ? (
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Ends in
+                    </div>
+                    <div>
+                      <CountdownTimer
+                        targetDate={new Date(Number(endTime) * 1000)}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    {new Date(Number(startTime) * 1000).toLocaleString()}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-muted-foreground">
-                    End Time
-                  </div>
-                  <div>
-                    {endTime === 0n ? "No limit" : new Date(Number(endTime) * 1000).toLocaleString()}
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-muted-foreground">
+                        Start Time
+                      </div>
+                      <div>
+                        {new Date(Number(startTime) * 1000).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-muted-foreground">
+                        End Time
+                      </div>
+                      <div>
+                        {endTime === 0n
+                          ? "No limit"
+                          : new Date(Number(endTime) * 1000).toLocaleString()}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium text-muted-foreground">
@@ -383,7 +425,7 @@ export default function PresaleDetails() {
                       onClick={() =>
                         writeContract({
                           address: address as Address,
-                          abi: presaleAbi,
+                          abi: PresaleABI,
                           functionName: "withdrawETH",
                         })
                       }
@@ -399,7 +441,7 @@ export default function PresaleDetails() {
                       onClick={() =>
                         writeContract({
                           address: address as Address,
-                          abi: presaleAbi,
+                          abi: PresaleABI,
                           functionName: "withdrawToken",
                           args: [readTokenAddress.data as Address],
                         })
@@ -428,7 +470,7 @@ export default function PresaleDetails() {
                     onClick={() =>
                       writeContract({
                         address: address as Address,
-                        abi: presaleAbi,
+                        abi: PresaleABI,
                         functionName: "refund",
                       })
                     }
@@ -473,7 +515,13 @@ export default function PresaleDetails() {
                       purchase.
                     </p>
                   </div>
-                  <form onSubmit={submit} className="space-y-4">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleContribute();
+                    }}
+                    className="space-y-4"
+                  >
                     {/* Token Amount Input - Uniswap Style */}
                     <div className="space-y-2">
                       <Label htmlFor="amount">From</Label>
@@ -514,22 +562,21 @@ export default function PresaleDetails() {
                       {nativeCurrencySymbol}
                     </div>
 
-                    <Button type="submit" className="w-full">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        isPending ||
+                        !tokenAmount ||
+                        parseFloat(tokenAmount) <= 0
+                      }
+                    >
                       {isPending
                         ? "Confirming..."
                         : !connectedAddress
                         ? "Connect Wallet"
                         : "Contribute"}
                     </Button>
-                    {hash && <div>Transaction Hash: {hash}</div>}
-                    {isConfirming && <div>Waiting for confirmation...</div>}
-                    {isConfirmed && <div>Transaction confirmed.</div>}
-                    {error && (
-                      <div>
-                        Alert:{" "}
-                        {(error as BaseError).shortMessage || error.message}
-                      </div>
-                    )}
                   </form>
                 </>
               )}
@@ -537,6 +584,22 @@ export default function PresaleDetails() {
           </CardContent>
         </Card>
       )}
+      <ContributionTransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => setIsTransactionModalOpen(false)}
+        transactionStatus={transactionStatus}
+        title="Contribute to Presale"
+        successMessage="Your contribution has been confirmed!"
+        errorMessage={(error as BaseError)?.shortMessage || error?.message}
+      />
+      <ContributionConfirmationModal
+        isOpen={isConfirmationModalOpen}
+        onClose={() => setIsConfirmationModalOpen(false)}
+        onConfirm={handleConfirmContribution}
+        tokenAmount={tokenAmount}
+        ethAmount={ethTotal}
+        tokenSymbol={tokenSymbol}
+      />
     </>
   );
 }
